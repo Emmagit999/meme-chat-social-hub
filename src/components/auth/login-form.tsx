@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth-context";
-import { FcGoogle } from "react-icons/fc";
+import { Chrome } from 'lucide-react'; // Replace FcGoogle with a Lucide icon
 
 export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
   const [username, setUsername] = useState('');
@@ -83,11 +83,18 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
       </div>
       
       <div className="grid grid-cols-2 gap-4">
-        <Button variant="outline" onClick={handleGoogleLogin} className="flex items-center justify-center gap-2">
-          <FcGoogle className="h-5 w-5" />
+        <Button 
+          variant="outline" 
+          onClick={handleGoogleLogin} 
+          className="flex items-center justify-center gap-2"
+        >
+          <Chrome className="h-5 w-5" /> {/* Replace FcGoogle with Chrome icon */}
           Google
         </Button>
-        <Button variant="outline" onClick={handlePhoneLogin}>
+        <Button 
+          variant="outline" 
+          onClick={handlePhoneLogin}
+        >
           Phone
         </Button>
       </div>
