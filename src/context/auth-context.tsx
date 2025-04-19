@@ -1,138 +1,140 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { toast } from "sonner";
-import { User } from "@/types";
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { AuthSession, AuthUser } from '@/types/auth';
+import { toast } from 'sonner';
 
-type AuthContextType = {
-  user: User | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-};
+interface AuthContextType extends AuthSession {
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, username: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signOut: () => Promise<void>;
+}
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for now
-const mockUsers = [
-  {
-    id: "1",
-    username: "meme_lord",
-    displayName: "Meme Lord",
-    bio: "I create the dankest memes on the internet",
-    avatar: "/assets/avatar1.jpg",
-    isPro: true,
-    createdAt: new Date(2023, 5, 15)
-  },
-  {
-    id: "2",
-    username: "roast_master",
-    displayName: "Roast Master",
-    bio: "Roasting is my passion",
-    avatar: "/assets/avatar2.jpg",
-    isPro: false,
-    createdAt: new Date(2023, 7, 20)
-  }
-];
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<AuthSession>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+  });
 
   useEffect(() => {
-    // Check local storage for saved user
-    const savedUser = localStorage.getItem('memeUser');
-    if (savedUser) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error("Failed to parse user from localStorage", error);
-        localStorage.removeItem('memeUser');
+    // Check active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setSession({
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+            username: session.user.user_metadata.username,
+            avatarUrl: session.user.user_metadata.avatar_url,
+          },
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } else {
+        setSession({ user: null, isLoading: false, isAuthenticated: false });
       }
-    }
-    setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session) {
+        setSession({
+          user: {
+            id: session.user.id,
+            email: session.user.email,
+            username: session.user.user_metadata.username,
+            avatarUrl: session.user.user_metadata.avatar_url,
+          },
+          isLoading: false,
+          isAuthenticated: true,
+        });
+      } else {
+        setSession({ user: null, isLoading: false, isAuthenticated: false });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (username: string, password: string) => {
-    setIsLoading(true);
+  const signInWithEmail = async (email: string, password: string) => {
     try {
-      // Mock authentication
-      const foundUser = mockUsers.find(u => u.username === username);
-      
-      if (foundUser && password === "password") { // In a real app, use proper password validation
-        setUser(foundUser);
-        localStorage.setItem('memeUser', JSON.stringify(foundUser));
-        toast.success("Welcome back!");
-      } else {
-        throw new Error("Invalid credentials");
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      toast.success('Successfully signed in!');
     } catch (error) {
-      console.error("Login failed", error);
-      toast.error("Login failed. Please check your credentials.");
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in');
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const register = async (username: string, email: string, password: string) => {
-    setIsLoading(true);
+  const signUpWithEmail = async (email: string, password: string, username: string) => {
     try {
-      // Check if username exists
-      if (mockUsers.some(u => u.username === username)) {
-        throw new Error("Username already taken");
-      }
-
-      // Create new user
-      const newUser: User = {
-        id: Date.now().toString(),
-        username,
-        displayName: username,
-        bio: "",
-        avatar: "",
-        isPro: false,
-        createdAt: new Date()
-      };
-
-      // In a real app, you'd save this to a database
-      setUser(newUser);
-      localStorage.setItem('memeUser', JSON.stringify(newUser));
-      toast.success("Account created successfully!");
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+          },
+        },
+      });
+      if (error) throw error;
+      toast.success('Successfully signed up! Please check your email for verification.');
     } catch (error) {
-      console.error("Registration failed", error);
-      toast.error("Registration failed. Please try again.");
+      toast.error(error instanceof Error ? error.message : 'Failed to sign up');
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('memeUser');
-    toast.success("Logged out successfully");
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign in with Google');
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.success('Successfully signed out!');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to sign out');
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      isAuthenticated: !!user,
-      login, 
-      register, 
-      logout 
-    }}>
+    <AuthContext.Provider
+      value={{
+        ...session,
+        signInWithEmail,
+        signUpWithEmail,
+        signInWithGoogle,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
