@@ -9,6 +9,10 @@ interface AuthContextType extends AuthSession {
   signUpWithEmail: (email: string, password: string, username: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  // Adding aliases to match component usage
+  login: (email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,6 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: session.user.email,
             username: session.user.user_metadata.username,
             avatarUrl: session.user.user_metadata.avatar_url,
+            // Map the properties to what components expect
+            avatar: session.user.user_metadata.avatar_url,
+            displayName: session.user.user_metadata.username,
+            bio: session.user.user_metadata.bio || '',
+            isPro: session.user.user_metadata.isPro || false,
           },
           isLoading: false,
           isAuthenticated: true,
@@ -48,6 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: session.user.email,
             username: session.user.user_metadata.username,
             avatarUrl: session.user.user_metadata.avatar_url,
+            // Map the properties to what components expect
+            avatar: session.user.user_metadata.avatar_url,
+            displayName: session.user.user_metadata.username,
+            bio: session.user.user_metadata.bio || '',
+            isPro: session.user.user_metadata.isPro || false,
           },
           isLoading: false,
           isAuthenticated: true,
@@ -116,6 +130,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Create alias functions to match component usage
+  const login = signInWithEmail;
+  const register = (username: string, email: string, password: string) => 
+    signUpWithEmail(email, password, username);
+  const logout = signOut;
+
   return (
     <AuthContext.Provider
       value={{
@@ -124,6 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUpWithEmail,
         signInWithGoogle,
         signOut,
+        // Add aliases to match component usage
+        login,
+        register,
+        logout,
       }}
     >
       {children}

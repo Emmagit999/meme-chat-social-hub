@@ -4,6 +4,11 @@ export interface AuthUser {
   email?: string;
   username?: string;
   avatarUrl?: string;
+  // Added properties to match usage in components
+  avatar?: string;
+  displayName?: string;
+  bio?: string;
+  isPro?: boolean;
 }
 
 export interface AuthSession {
