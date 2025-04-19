@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
@@ -109,7 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `https://preview--meme-chat-social-hub.lovable.app/auth/callback`,
         },
       });
       if (error) throw error;
