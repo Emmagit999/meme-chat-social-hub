@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import RoastPage from "./pages/roast-page";
 import ProfilePage from "./pages/profile-page";
 import ChatPage from "./pages/chat-page";
 import NotFound from "./pages/NotFound";
+import SplashScreen from "@/components/layout/splash-screen";
 
 const queryClient = new QueryClient();
 
@@ -99,20 +99,34 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <DataProvider>
-          <BrowserRouter>
-            <AppRoutes />
-            <Toaster />
-            <Sonner />
-          </BrowserRouter>
-        </DataProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const [splash, setSplash] = [true, (v: boolean) => {}]; // dummy
+
+const App = () => {
+  // Custom splash effect: show intro screen with logo for 2s
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  React.useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (showSplash) return <SplashScreen />;
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <DataProvider>
+            <BrowserRouter>
+              <AppRoutes />
+              <Toaster />
+              <Sonner />
+            </BrowserRouter>
+          </DataProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

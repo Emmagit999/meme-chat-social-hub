@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { MessageCircle, X, Heart, Shuffle } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const MergePage: React.FC = () => {
   const { getSuggestedUsers, startNewChat } = useChat();
@@ -31,7 +31,6 @@ const MergePage: React.FC = () => {
         resetSwipe();
       }, 300);
     } else {
-      // Reached the end, show a message or loop back
       toast("You've seen all potential matches. Refreshing...");
       setTimeout(() => {
         setCurrentIndex(0);
@@ -40,14 +39,22 @@ const MergePage: React.FC = () => {
     }
   };
   
-  const handleLike = () => {
+  const handleLike = async () => {
     setSwiped(true);
     setDirection('right');
-    
-    // Start a chat with this user
     startNewChat(currentUser.id);
+    try {
+      const { error } = await supabase.from("friends").insert([
+        { user_id: user.id, friend_id: currentUser.id }
+      ]);
+      if (error) throw error;
+    } catch (e) {
+      // already a friend is ok!
+    }
     toast.success(`You've matched with ${currentUser.displayName || currentUser.username}!`);
-    
+    setTimeout(() => {
+      navigate("/chat");
+    }, 500);
     goToNextUser();
   };
   
@@ -85,7 +92,6 @@ const MergePage: React.FC = () => {
       <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Swipe Card */}
         <div className="flex-1">
           <div className="relative max-w-md mx-auto">
             <Card 
@@ -144,7 +150,6 @@ const MergePage: React.FC = () => {
           </div>
         </div>
         
-        {/* Suggested Users List */}
         <div className="flex-1">
           <Card>
             <CardHeader>

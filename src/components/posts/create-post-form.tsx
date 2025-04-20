@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -21,6 +20,7 @@ import { useAuth } from "@/context/auth-context";
 import { useData } from "@/context/data-context";
 import { ImageIcon, FilmIcon, X } from "lucide-react";
 import { toast } from "sonner";
+import { MediaUpload } from "./media-upload";
 
 interface CreatePostFormProps {
   isOpen: boolean;
@@ -34,7 +34,15 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
   const [postType, setPostType] = useState<'meme' | 'roast' | 'joke'>('meme');
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
-  
+  const [uploading, setUploading] = useState(false);
+
+  // NEW: handle uploads via MediaUpload
+  const handleMediaUploaded = (url: string, type: "image" | "video") => {
+    setMediaPreview(url);
+    setMediaType(type);
+  };
+
+  // UPDATED: Remove mock upload, save real media url
   const handlePostSubmit = () => {
     if (!user) return;
     
@@ -57,22 +65,6 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
     onClose();
   };
   
-  const handleImageUpload = () => {
-    // Mock image upload - in a real app, you'd handle file selection and uploading
-    const imageUrl = "https://placehold.co/600x400/121212/00C853?text=Mock+Image";
-    setMediaPreview(imageUrl);
-    setMediaType('image');
-    toast.success("Image uploaded");
-  };
-  
-  const handleVideoUpload = () => {
-    // Mock video upload
-    const videoUrl = "https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4";
-    setMediaPreview(videoUrl);
-    setMediaType('video');
-    toast.success("Video uploaded");
-  };
-  
   const removeMedia = () => {
     setMediaPreview(null);
     setMediaType(null);
@@ -87,9 +79,9 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-white border-yellow-400">
         <DialogHeader>
-          <DialogTitle>Create a Post</DialogTitle>
+          <DialogTitle className="text-yellow-500">Create a Post</DialogTitle>
           <DialogDescription>
             Share a meme, joke, or roast with the community
           </DialogDescription>
@@ -100,49 +92,26 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
             placeholder="What's on your mind?"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="min-h-[120px]"
+            className="min-h-[120px] border-yellow-400"
           />
+          <MediaUpload onUploaded={handleMediaUploaded} />
           
-          <div className="flex items-center gap-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={handleImageUpload}
-              className="flex items-center gap-2"
-            >
-              <ImageIcon className="h-4 w-4" />
-              <span>Image</span>
-            </Button>
-            
-            <Button 
-              type="button" 
-              variant="outline" 
-              size="sm"
-              onClick={handleVideoUpload}
-              className="flex items-center gap-2"
-            >
-              <FilmIcon className="h-4 w-4" />
-              <span>Video</span>
-            </Button>
-            
-            <Select 
-              value={postType} 
-              onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke')}
-            >
-              <SelectTrigger className="w-[100px]">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="meme">Meme</SelectItem>
-                <SelectItem value="roast">Roast</SelectItem>
-                <SelectItem value="joke">Joke</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <Select 
+            value={postType} 
+            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke')}
+          >
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="meme">Meme</SelectItem>
+              <SelectItem value="roast">Roast</SelectItem>
+              <SelectItem value="joke">Joke</SelectItem>
+            </SelectContent>
+          </Select>
           
           {mediaPreview && (
-            <div className="relative rounded-md overflow-hidden border border-border">
+            <div className="relative rounded-md overflow-hidden border border-yellow-400">
               <Button 
                 type="button" 
                 variant="destructive" 
@@ -184,7 +153,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
           <Button 
             type="button" 
             onClick={handlePostSubmit}
-            className="bg-memeGreen hover:bg-memeGreen/90"
+            className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black font-bold"
           >
             Post
           </Button>

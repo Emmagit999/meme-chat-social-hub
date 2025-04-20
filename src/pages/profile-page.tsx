@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,13 +8,32 @@ import { useData } from "@/context/data-context";
 import { PostCard } from "@/components/posts/post-card";
 import { Camera, Crown, Edit, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { AvatarUpload } from "@/components/auth/avatar-upload";
+import { supabase } from "@/integrations/supabase/client";
 
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { posts } = useData();
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio || "");
-  
+  const [avatar, setAvatar] = useState(user?.avatar);
+
+  // Add updating avatar (save to profile)
+  const handleUploadedAvatar = async (url: string) => {
+    setAvatar(url);
+    // Here, also call Supabase to update their profile!
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: url })
+      .eq("id", user?.id);
+    if (error) {
+      toast.error("Avatar update failed.");
+    }
+  };
+
+  // ... rest unchanged, but now pass avatar from state and AvatarUpload in editing mode
+  if (!user) return null;
+
   const userPosts = posts.filter(post => post.userId === user?.id);
   
   const handleUpgradeAccount = () => {
@@ -39,45 +57,28 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="container py-6">
-      <Card className="mb-6">
+      <Card className="mb-6 border-yellow-400 shadow-gold">
         <CardHeader className="relative pb-0">
           <div className="absolute right-4 top-4 flex gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              <Edit className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={() => setIsEditing(!isEditing)}>
+              <Edit className="h-5 w-5 text-yellow-500" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={logout}
-            >
-              <LogOut className="h-5 w-5" />
+            <Button variant="ghost" size="icon" onClick={logout}>
+              <LogOut className="h-5 w-5 text-yellow-500" />
             </Button>
           </div>
-          
           <div className="flex flex-col items-center">
-            <div className="relative group">
-              <Avatar className="h-24 w-24 mb-4">
-                <AvatarImage src={user.avatar} alt={user.username} />
-                <AvatarFallback className="text-2xl">
-                  {user.username.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute bottom-4 right-0 rounded-full h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={handleChangeAvatar}
-              >
-                <Camera className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <CardTitle className="text-2xl">
+            {isEditing ? (
+              <AvatarUpload onUpload={handleUploadedAvatar} currentAvatar={avatar || user.avatar} />
+            ) : (
+              <div className="relative group">
+                <Avatar className="h-24 w-24 mb-4 border-2 border-yellow-400 shadow-gold">
+                  <AvatarImage src={avatar || user.avatar} alt={user.username} />
+                  <AvatarFallback className="text-2xl">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+            <CardTitle className="text-2xl text-yellow-500">
               {user.displayName || user.username}
               {user.isPro && (
                 <Crown className="h-5 w-5 text-yellow-500 inline ml-2" />
