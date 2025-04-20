@@ -6,8 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChat } from "@/hooks/use-chat";
 import { useAuth } from "@/context/auth-context";
-import { Send } from "lucide-react";
+import { Smile, Send } from "lucide-react";
 import { format } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { User } from '@/types';
+
+const EMOJI_LIST = ["😀", "😂", "😊", "😍", "🥰", "😎", "🙌", "👍", "❤️", "🔥", "👋", "🎉", "🤔", "😢", "😭", "😡", "🤮", "🤯", "🥳", "😴"];
 
 const ChatPage: React.FC = () => {
   const { user } = useAuth();
@@ -17,10 +21,13 @@ const ChatPage: React.FC = () => {
     activeChat, 
     setActiveChat,
     sendMessage,
-    isLoading 
+    isLoading,
+    getSuggestedUsers
   } = useChat();
   const [messageText, setMessageText] = useState('');
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestedUsers = getSuggestedUsers();
   
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -33,6 +40,12 @@ const ChatPage: React.FC = () => {
     
     sendMessage(messageText);
     setMessageText('');
+    inputRef.current?.focus();
+  };
+
+  const insertEmoji = (emoji: string) => {
+    setMessageText(prev => prev + emoji);
+    inputRef.current?.focus();
   };
   
   if (!user) return null;
@@ -56,31 +69,32 @@ const ChatPage: React.FC = () => {
 
   return (
     <div className="container py-6">
-      <h1 className="text-2xl font-bold mb-6">Chat</h1>
+      <h1 className="text-2xl font-bold mb-6 text-yellow-500">Chat</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-12rem)] border-2 border-yellow-400 rounded-lg overflow-hidden shadow-gold">
         {/* Chat List */}
-        <div className="md:col-span-1 border rounded-lg overflow-hidden">
-          <div className="p-4 border-b bg-card">
-            <h2 className="font-semibold">Conversations</h2>
+        <div className="md:col-span-1 border-r border-yellow-400 bg-white">
+          <div className="p-4 border-b border-yellow-400 bg-gradient-to-r from-yellow-100 to-yellow-50">
+            <h2 className="font-semibold text-yellow-700">Conversations</h2>
           </div>
           
           <ScrollArea className="h-[calc(100%-4rem)]">
             {isLoading ? (
               <div className="flex justify-center p-4">
-                <div className="animate-pulse-subtle">Loading...</div>
+                <div className="animate-pulse">Loading...</div>
               </div>
             ) : chats.length === 0 ? (
               <div className="p-4 text-center text-muted-foreground">
-                No conversations yet
+                <p className="mb-2">No conversations yet</p>
+                <p className="text-sm">Start chatting with someone from the Merge page!</p>
               </div>
             ) : (
               <div>
                 {chats.map(chat => (
                   <button
                     key={chat.id}
-                    className={`w-full p-3 flex items-center gap-3 hover:bg-secondary transition-colors ${
-                      activeChat === chat.id ? 'bg-secondary' : ''
+                    className={`w-full p-3 flex items-center gap-3 hover:bg-yellow-50 transition-colors ${
+                      activeChat === chat.id ? 'bg-yellow-100' : ''
                     }`}
                     onClick={() => setActiveChat(chat.id)}
                   >
@@ -107,6 +121,11 @@ const ChatPage: React.FC = () => {
                         {format(chat.lastMessageDate, 'hh:mm a')}
                       </div>
                     )}
+                    {chat.unreadCount > 0 && (
+                      <div className="bg-memeGreen text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {chat.unreadCount}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
@@ -115,14 +134,24 @@ const ChatPage: React.FC = () => {
         </div>
         
         {/* Chat Messages */}
-        <div className="md:col-span-2 border rounded-lg overflow-hidden flex flex-col">
+        <div className="md:col-span-2 flex flex-col bg-gradient-to-b from-yellow-50 to-white">
           {activeChat ? (
             <>
-              <div className="p-4 border-b bg-card">
+              <div className="p-4 border-b border-yellow-400 bg-gradient-to-r from-yellow-100 to-yellow-50 flex items-center">
+                <Avatar className="h-8 w-8 mr-3">
+                  <AvatarImage 
+                    src={messages[0]?.senderId === user.id 
+                      ? messages[0]?.receiverId === "2" ? "/assets/avatar2.jpg" : "/assets/avatar1.jpg"
+                      : messages[0]?.senderId === "2" ? "/assets/avatar2.jpg" : "/assets/avatar1.jpg"} 
+                  />
+                  <AvatarFallback>
+                    {getOtherUser(activeChat).substring(1, 3).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
                 <h2 className="font-semibold">{getOtherUser(activeChat)}</h2>
               </div>
               
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea className="flex-1 p-4 bg-opacity-30 bg-pattern-subtle">
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-muted-foreground">
                     No messages yet. Say hello!
@@ -139,8 +168,8 @@ const ChatPage: React.FC = () => {
                         <div
                           className={`max-w-[80%] rounded-lg p-3 ${
                             message.senderId === user.id
-                              ? 'bg-memeGreen text-white'
-                              : 'bg-secondary'
+                              ? 'bg-memeGreen text-white rounded-tr-none'
+                              : 'bg-white border border-yellow-200 rounded-tl-none'
                           }`}
                         >
                           <p>{message.content}</p>
@@ -161,22 +190,49 @@ const ChatPage: React.FC = () => {
                 )}
               </ScrollArea>
               
-              <form onSubmit={handleSendMessage} className="p-4 border-t flex gap-2">
+              <form onSubmit={handleSendMessage} className="p-3 border-t border-yellow-200 flex gap-2 bg-white">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button type="button" variant="ghost" size="icon" className="text-yellow-500">
+                      <Smile className="h-5 w-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2" align="start">
+                    <div className="grid grid-cols-5 gap-2">
+                      {EMOJI_LIST.map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className="text-xl hover:bg-yellow-100 p-1 rounded cursor-pointer"
+                          onClick={() => insertEmoji(emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                
                 <Input
+                  ref={inputRef}
                   placeholder="Type a message..."
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 border-yellow-200 focus:border-yellow-400"
                   autoFocus
                 />
-                <Button type="submit" className="bg-memeGreen hover:bg-memeGreen/90">
+                <Button 
+                  type="submit" 
+                  className="bg-memeGreen hover:bg-memeGreen/90 shadow-sm"
+                  disabled={!messageText.trim()}
+                >
                   <Send className="h-5 w-5" />
                 </Button>
               </form>
             </>
           ) : (
             <div className="h-full flex items-center justify-center flex-col p-4 text-muted-foreground">
-              <p className="mb-2">Select a conversation to start chatting</p>
+              <p className="mb-2 text-yellow-700">Select a conversation to start chatting</p>
               <p className="text-sm">Or create a new conversation from the Merge section</p>
             </div>
           )}

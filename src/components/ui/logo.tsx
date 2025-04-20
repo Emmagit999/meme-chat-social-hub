@@ -13,7 +13,7 @@ export default function AppLogo({ size = 80 }: { size?: number }) {
       src={logoSrc}
       alt="App Logo"
       style={{ width: size, height: size, objectFit: "contain" }}
-      className="mx-auto rounded-[16px] border-4 border-yellow-400 shadow-gold"
+      className="mx-auto rounded-[16px] border-4 border-yellow-400 shadow-gold bg-gradient-to-br from-yellow-200 to-yellow-50"
     />
   );
 }

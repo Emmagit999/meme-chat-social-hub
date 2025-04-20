@@ -4,32 +4,49 @@ import { Button } from "@/components/ui/button";
 import { uploadToStorage } from "@/utils/storage";
 import { useAuth } from "@/context/auth-context";
 import { toast } from "sonner";
+import { ImageIcon, VideoIcon } from "lucide-react";
 
 export const MediaUpload: React.FC<{
   onUploaded: (url: string, type: "image" | "video") => void;
 }> = ({ onUploaded }) => {
   const { user } = useAuth();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [uploadType, setUploadType] = useState<"image" | "video" | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSelect = (type: "image" | "video") => {
-    setUploadType(type);
-    inputRef.current?.click();
+  const handleImageSelect = () => {
+    imageInputRef.current?.click();
   };
 
-  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !uploadType || !e.target.files?.[0]) return;
+  const handleVideoSelect = () => {
+    videoInputRef.current?.click();
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files?.[0]) return;
     setLoading(true);
     const url = await uploadToStorage(e.target.files[0], "post_media", user.id);
     if (url) {
-      onUploaded(url, uploadType);
-      toast.success(`${uploadType === "image" ? "Image" : "Video"} uploaded!`);
+      onUploaded(url, "image");
+      toast.success("Image uploaded!");
     } else {
-      toast.error("Upload failed!");
+      toast.error("Image upload failed!");
     }
     setLoading(false);
-    setUploadType(null);
+    e.target.value = "";
+  };
+
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files?.[0]) return;
+    setLoading(true);
+    const url = await uploadToStorage(e.target.files[0], "post_media", user.id);
+    if (url) {
+      onUploaded(url, "video");
+      toast.success("Video uploaded!");
+    } else {
+      toast.error("Video upload failed!");
+    }
+    setLoading(false);
     e.target.value = "";
   };
 
@@ -39,28 +56,41 @@ export const MediaUpload: React.FC<{
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => handleSelect("image")}
+        onClick={handleImageSelect}
+        disabled={loading}
         className="flex items-center gap-2 text-yellow-600 border-yellow-400"
       >
+        <ImageIcon className="h-4 w-4" />
         Upload Image
       </Button>
       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => handleSelect("video")}
+        onClick={handleVideoSelect}
+        disabled={loading}
         className="flex items-center gap-2 text-yellow-600 border-yellow-400"
       >
+        <VideoIcon className="h-4 w-4" />
         Upload Video
       </Button>
       <input
-        ref={inputRef}
+        ref={imageInputRef}
         className="hidden"
         type="file"
-        accept={uploadType === "image" ? "image/*" : "video/*"}
-        onChange={handleChange}
+        accept="image/*"
+        onChange={handleImageChange}
         disabled={loading}
       />
+      <input
+        ref={videoInputRef}
+        className="hidden"
+        type="file"
+        accept="video/*"
+        onChange={handleVideoChange}
+        disabled={loading}
+      />
+      {loading && <span className="text-sm text-muted-foreground">Uploading...</span>}
     </div>
   );
 };
