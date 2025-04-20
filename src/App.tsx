@@ -1,3 +1,5 @@
+
+import React, { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -99,13 +101,11 @@ const AppRoutes = () => {
   );
 };
 
-const [splash, setSplash] = [true, (v: boolean) => {}]; // dummy
-
 const App = () => {
   // Custom splash effect: show intro screen with logo for 2s
-  const [showSplash, setShowSplash] = React.useState(true);
+  const [showSplash, setShowSplash] = useState(true);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(t);
   }, []);

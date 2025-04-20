@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -8,9 +9,11 @@ import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/auth-context";
 
 const MergePage: React.FC = () => {
   const { getSuggestedUsers, startNewChat } = useChat();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swiped, setSwiped] = useState(false);
@@ -40,6 +43,11 @@ const MergePage: React.FC = () => {
   };
   
   const handleLike = async () => {
+    if (!user) {
+      toast.error("You must be logged in to like users");
+      return;
+    }
+    
     setSwiped(true);
     setDirection('right');
     startNewChat(currentUser.id);
