@@ -1,7 +1,7 @@
 
 import React from "react";
 // Use a relative path or import from public directory instead of /uploads
-import defaultLogo from "@/assets/default-logo.png"; // Fallback logo
+import { defaultLogo } from "@/assets/index";
 
 export default function AppLogo({ size = 80 }: { size?: number }) {
   // Try to get the uploaded image from the user object or environment

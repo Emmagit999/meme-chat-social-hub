@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,50 +12,69 @@ import { toast } from "sonner";
 import { AvatarUpload } from "@/components/auth/avatar-upload";
 import { supabase } from "@/integrations/supabase/client";
 
+// Storage key for avatar in localStorage
+const AVATAR_STORAGE_KEY = 'memechat_user_avatar';
+const BIO_STORAGE_KEY = 'memechat_user_bio';
+
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { posts } = useData();
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio || "");
-  const [avatar, setAvatar] = useState(user?.avatar);
+  const [avatar, setAvatar] = useState<string | undefined>(user?.avatar);
+
+  // Load saved avatar from localStorage on mount
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
+    
+    const savedBio = localStorage.getItem(BIO_STORAGE_KEY);
+    if (savedBio) {
+      setBio(savedBio);
+    }
+  }, []);
 
   // Add updating avatar (save to profile)
   const handleUploadedAvatar = async (url: string) => {
     setAvatar(url);
+    
+    // Save to localStorage to persist across refreshes
+    localStorage.setItem(AVATAR_STORAGE_KEY, url);
+    
     // Here, also call Supabase to update their profile!
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: url })
       .eq("id", user?.id);
+    
     if (error) {
       toast.error("Avatar update failed.");
+    } else {
+      toast.success("Avatar updated successfully!");
     }
   };
 
-  // ... rest unchanged, but now pass avatar from state and AvatarUpload in editing mode
-  if (!user) return null;
-
-  const userPosts = posts.filter(post => post.userId === user?.id);
+  const handleUpdateProfile = () => {
+    // Save bio to localStorage
+    localStorage.setItem(BIO_STORAGE_KEY, bio);
+    
+    // In a real app, save to Supabase
+    // const { error } = await supabase.from("profiles").update({ bio }).eq("id", user?.id);
+    
+    toast.success("Profile updated!");
+    setIsEditing(false);
+  };
   
   const handleUpgradeAccount = () => {
     toast("Premium upgrade would be implemented here!");
   };
   
-  const handleUpdateProfile = () => {
-    // In a real app, save the bio to the user's profile
-    toast.success("Profile updated!");
-    setIsEditing(false);
-  };
-  
-  const handleChangeAvatar = () => {
-    // In a real app, implement avatar upload
-    toast("Avatar change would be implemented here!");
-  };
-  
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
+  const userPosts = posts.filter(post => post.userId === user?.id);
+  
   return (
     <div className="container py-6">
       <Card className="mb-6 border-yellow-400 shadow-gold">
@@ -117,7 +137,7 @@ const ProfilePage: React.FC = () => {
             </div>
           ) : (
             <p className="text-center">
-              {user.bio || "No bio yet. Click edit to add one!"}
+              {bio || "No bio yet. Click edit to add one!"}
             </p>
           )}
           

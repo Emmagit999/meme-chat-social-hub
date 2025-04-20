@@ -167,6 +167,7 @@ const ChatPage: React.FC = () => {
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   className="flex-1"
+                  autoFocus
                 />
                 <Button type="submit" className="bg-memeGreen hover:bg-memeGreen/90">
                   <Send className="h-5 w-5" />
@@ -174,8 +175,9 @@ const ChatPage: React.FC = () => {
               </form>
             </>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              Select a conversation to start chatting
+            <div className="h-full flex items-center justify-center flex-col p-4 text-muted-foreground">
+              <p className="mb-2">Select a conversation to start chatting</p>
+              <p className="text-sm">Or create a new conversation from the Merge section</p>
             </div>
           )}
         </div>

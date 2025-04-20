@@ -1,190 +1,102 @@
-
 import React, { useState } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { useAuth } from "@/context/auth-context";
-import { useData } from "@/context/data-context";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Post } from "@/types";
-import { Heart, MessageCircle, Share2, ChevronDown, ChevronUp } from "lucide-react";
+import { Heart, MessageSquare, MoreHorizontal, Share2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useData } from "@/context/data-context";
+import { CommentSection } from './comment-section';
 
 interface PostCardProps {
   post: Post;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post }) => {
-  const { user } = useAuth();
-  const { likePost, addComment, getPostComments } = useData();
-  const [isCommenting, setIsCommenting] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const comments = getPostComments(post.id);
-
-  const handleLike = () => {
-    likePost(post.id);
-  };
-
-  const handleSubmitComment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !commentText.trim()) return;
-
-    addComment({
-      postId: post.id,
-      userId: user.id,
-      username: user.username,
-      userAvatar: user.avatar,
-      content: commentText
-    });
-
-    setCommentText('');
-    setShowComments(true);
-  };
-
-  const getPostTypeClass = () => {
-    switch (post.type) {
-      case 'roast':
-        return 'border-l-4 border-red-500';
-      case 'joke':
-        return 'border-l-4 border-yellow-500';
-      default:
-        return 'border-l-4 border-memeGreen';
-    }
-  };
-
-  const getPostTypeTag = () => {
-    switch (post.type) {
-      case 'roast':
-        return 'Roast';
-      case 'joke':
-        return 'Joke';
-      default:
-        return 'Meme';
-    }
-  };
+  const [isExpanded, setIsExpanded] = useState(false);
+  const { likePost } = useData();
 
   return (
-    <Card className={`mb-4 hover:shadow-md transition-shadow ${getPostTypeClass()}`}>
-      <CardHeader className="flex flex-row items-start gap-4 pb-2">
-        <Avatar>
-          <AvatarImage src={post.userAvatar} alt={post.username} />
-          <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col">
-          <div className="flex items-center">
-            <span className="font-semibold">@{post.username}</span>
-            <span className="ml-2 text-xs text-muted-foreground">
-              {formatDistanceToNow(post.createdAt, { addSuffix: true })}
-            </span>
-          </div>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground inline-block w-fit">
-            {getPostTypeTag()}
-          </span>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-2">
-        <p className="mb-3">{post.content}</p>
-        {post.image && (
-          <div className="rounded-md overflow-hidden mb-3">
-            <img 
-              src={post.image} 
-              alt="Post media" 
-              className="w-full h-auto object-cover max-h-[400px]" 
-            />
-          </div>
-        )}
-        {post.video && (
-          <div className="rounded-md overflow-hidden mb-3">
-            <video 
-              src={post.video} 
-              controls 
-              className="w-full h-auto max-h-[400px]" 
-            />
-          </div>
-        )}
-      </CardContent>
-      <CardFooter className="flex flex-col">
-        <div className="flex items-center justify-between w-full mb-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-muted-foreground hover:text-memeGreen flex gap-1"
-            onClick={handleLike}
-          >
-            <Heart className={`h-5 w-5 ${post.likes > 0 ? 'fill-memeGreen text-memeGreen' : ''}`} />
-            <span>{post.likes}</span>
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-muted-foreground hover:text-memeGreen flex gap-1"
-            onClick={() => setIsCommenting(!isCommenting)}
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span>{post.comments}</span>
-          </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-muted-foreground hover:text-memeGreen"
-          >
-            <Share2 className="h-5 w-5" />
-          </Button>
-        </div>
-        
-        {isCommenting && (
-          <form onSubmit={handleSubmitComment} className="w-full mb-3">
-            <Textarea 
-              placeholder="Add a comment..." 
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              className="mb-2"
-            />
-            <Button type="submit" size="sm" className="bg-memeGreen hover:bg-memeGreen/90">
-              Comment
-            </Button>
-          </form>
-        )}
-        
-        {post.comments > 0 && (
-          <div className="w-full">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-muted-foreground hover:text-memeGreen flex items-center gap-1 mb-2"
-              onClick={() => setShowComments(!showComments)}
-            >
-              {showComments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span>{showComments ? "Hide comments" : "Show comments"}</span>
-            </Button>
-            
-            {showComments && (
-              <div className="space-y-3">
-                {comments.map(comment => (
-                  <div key={comment.id} className="flex gap-3 p-2 rounded-md bg-secondary">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={comment.userAvatar} alt={comment.username} />
-                      <AvatarFallback>{comment.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">@{comment.username}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(comment.createdAt, { addSuffix: true })}
-                        </span>
-                      </div>
-                      <p className="text-sm">{comment.content}</p>
-                    </div>
-                  </div>
-                ))}
+    <Card className="w-full border-yellow-400 shadow-gold">
+      <CardContent className="p-4">
+        <div className="flex items-start gap-4">
+          <Avatar>
+            <AvatarImage src={post.userAvatar} alt={post.username} />
+            <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">{post.username}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {formatDistanceToNow(post.createdAt, { addSuffix: true })}
+                </p>
               </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 p-0">
+                    <span className="sr-only">Open menu</span>
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                  <DropdownMenuItem>Edit</DropdownMenuItem>
+                  <DropdownMenuItem>Delete</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Report</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <p className="text-sm mt-1">{post.content}</p>
+            {post.image && (
+              <img 
+                src={post.image} 
+                alt="Post Image" 
+                className="w-full rounded-md mt-3 aspect-video object-cover" 
+              />
+            )}
+            {post.video && (
+              <video 
+                src={post.video} 
+                controls 
+                className="w-full rounded-md mt-3 aspect-video object-cover" 
+              />
             )}
           </div>
-        )}
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between p-4">
+        <div className="flex gap-4">
+          <Button 
+            variant="ghost"
+            onClick={() => likePost(post.id)}
+          >
+            <Heart className="h-5 w-5" />
+            <span>{post.likes > 0 && post.likes}</span>
+          </Button>
+          <Button variant="ghost" onClick={() => setIsExpanded(!isExpanded)}>
+            <MessageSquare className="h-5 w-5" />
+            <span>{post.comments > 0 && post.comments}</span>
+          </Button>
+        </div>
+        <Button variant="ghost">
+          <Share2 className="h-5 w-5" />
+        </Button>
       </CardFooter>
+      {isExpanded && (
+        <div className="pt-4 mt-4 border-t">
+          <CommentSection postId={post.id} />
+        </div>
+      )}
     </Card>
   );
 };

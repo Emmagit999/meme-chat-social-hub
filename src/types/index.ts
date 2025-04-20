@@ -1,4 +1,3 @@
-
 export type User = {
   id: string;
   username: string;
@@ -23,16 +22,28 @@ export type Post = {
   type: 'meme' | 'roast' | 'joke';
 };
 
-export type Comment = {
+export type CommentReply = {
   id: string;
-  postId: string;
+  commentId: string;
   userId: string;
   username: string;
-  userAvatar?: string;
+  userAvatar: string;
   content: string;
   likes: number;
   createdAt: Date;
 };
+
+export interface Comment {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  userAvatar: string;
+  content: string;
+  likes: number;
+  createdAt: Date;
+  replies?: CommentReply[];
+}
 
 export type Message = {
   id: string;
