@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChat } from "@/hooks/use-chat";
-import { MessageCircle, X, Heart, Shuffle } from "lucide-react";
+import { MessageCircle, X, Heart, Shuffle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
@@ -12,14 +12,85 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
 
 const MergePage: React.FC = () => {
-  const { getSuggestedUsers, startNewChat } = useChat();
+  const { startNewChat } = useChat();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swiped, setSwiped] = useState(false);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
+  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const suggestedUsers = getSuggestedUsers();
+  // Get online users and people to merge with
+  useEffect(() => {
+    const loadUsers = () => {
+      // In a real app, this would fetch real users from the backend
+      const storedUsers = localStorage.getItem('users');
+      if (storedUsers) {
+        const users = JSON.parse(storedUsers);
+        setSuggestedUsers(users.filter(u => u.id !== user?.id));
+      } else {
+        // Create some initial users if none exist
+        const initialUsers: User[] = [
+          {
+            id: "user1",
+            username: "meme_lover",
+            displayName: "Meme Lover",
+            bio: "I live for the dankest memes",
+            avatar: "/assets/avatar1.jpg",
+            isPro: false,
+            createdAt: new Date()
+          },
+          {
+            id: "user2",
+            username: "joke_master",
+            displayName: "Joke Master",
+            bio: "Making people laugh since 2010",
+            avatar: "/assets/avatar2.jpg",
+            isPro: true,
+            createdAt: new Date()
+          },
+          {
+            id: "user3",
+            username: "gif_guru",
+            displayName: "GIF Guru",
+            bio: "A GIF says more than a thousand words",
+            avatar: "/assets/avatar3.jpg",
+            isPro: false,
+            createdAt: new Date()
+          }
+        ];
+        localStorage.setItem('users', JSON.stringify(initialUsers));
+        setSuggestedUsers(initialUsers);
+      }
+      
+      // Set random users as online
+      setOnlineUsers(["user1", "user3"]);
+      setIsLoading(false);
+    };
+    
+    loadUsers();
+    
+    // Set up a fake "real-time" system to update online users
+    const interval = setInterval(() => {
+      // In a real app this would be a websocket connection
+      const user2Status = Math.random() > 0.7;
+      const updatedOnline = ["user1", "user3"];
+      
+      if (user2Status) {
+        updatedOnline.push("user2");
+        toast("Joke Master is now online!", {
+          icon: "🟢",
+        });
+      }
+      
+      setOnlineUsers(updatedOnline);
+    }, 45000); // Every 45 seconds
+    
+    return () => clearInterval(interval);
+  }, [user]);
+  
   const currentUser = suggestedUsers[currentIndex];
   
   const resetSwipe = () => {
@@ -43,26 +114,26 @@ const MergePage: React.FC = () => {
   };
   
   const handleLike = async () => {
-    if (!user) {
+    if (!user || !currentUser) {
       toast.error("You must be logged in to like users");
       return;
     }
     
     setSwiped(true);
     setDirection('right');
-    startNewChat(currentUser.id);
-    try {
-      const { error } = await supabase.from("friends").insert([
-        { user_id: user.id, friend_id: currentUser.id }
-      ]);
-      if (error) throw error;
-    } catch (e) {
-      // already a friend is ok!
+    
+    // Add to pals
+    const pals = JSON.parse(localStorage.getItem('pals') || '[]');
+    if (!pals.some(p => p.id === currentUser.id)) {
+      pals.push(currentUser);
+      localStorage.setItem('pals', JSON.stringify(pals));
     }
+    
+    // Start a chat with this user
+    startNewChat(currentUser.id);
+    
     toast.success(`You've matched with ${currentUser.displayName || currentUser.username}!`);
-    setTimeout(() => {
-      navigate("/chat");
-    }, 500);
+    
     goToNextUser();
   };
   
@@ -76,6 +147,17 @@ const MergePage: React.FC = () => {
     startNewChat(user.id);
     navigate("/chat");
   };
+
+  if (isLoading) {
+    return (
+      <div className="container py-10 text-center">
+        <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
+        <div className="p-10 rounded-lg bg-card border border-border animate-pulse">
+          <p className="mb-4">Loading users...</p>
+        </div>
+      </div>
+    );
+  }
   
   if (suggestedUsers.length === 0) {
     return (
@@ -94,6 +176,10 @@ const MergePage: React.FC = () => {
       </div>
     );
   }
+
+  const onlineFilteredUsers = suggestedUsers.filter(user => 
+    onlineUsers.includes(user.id)
+  );
 
   return (
     <div className="container py-6">
@@ -120,9 +206,14 @@ const MergePage: React.FC = () => {
                     </AvatarFallback>
                   </Avatar>
                 </div>
-                <h2 className="text-xl font-bold">
-                  {currentUser.displayName || currentUser.username}
-                </h2>
+                <div className="flex items-center justify-center gap-2">
+                  <h2 className="text-xl font-bold">
+                    {currentUser.displayName || currentUser.username}
+                  </h2>
+                  {onlineUsers.includes(currentUser.id) && (
+                    <span className="h-3 w-3 bg-green-500 rounded-full"></span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">@{currentUser.username}</p>
                 {currentUser.isPro && (
                   <div className="mt-2">
@@ -161,31 +252,59 @@ const MergePage: React.FC = () => {
         <div className="flex-1">
           <Card>
             <CardHeader>
-              <h2 className="text-xl font-semibold">Suggested Memers</h2>
+              <h2 className="text-xl font-semibold">Online Memers</h2>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {suggestedUsers.map(user => (
-                  <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors">
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarImage src={user.avatar} alt={user.username} />
-                        <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-medium">{user.displayName || user.username}</h3>
-                        <p className="text-sm text-muted-foreground">@{user.username}</p>
+                {onlineFilteredUsers.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    No users online right now
+                  </p>
+                ) : (
+                  onlineFilteredUsers.map(user => (
+                    <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar>
+                            <AvatarImage src={user.avatar} alt={user.username} />
+                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">{user.displayName || user.username}</h3>
+                          <p className="text-sm text-muted-foreground">@{user.username}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            // Add to pals
+                            const pals = JSON.parse(localStorage.getItem('pals') || '[]');
+                            if (!pals.some(p => p.id === user.id)) {
+                              pals.push(user);
+                              localStorage.setItem('pals', JSON.stringify(pals));
+                              toast.success(`Added ${user.displayName || user.username} as a pal!`);
+                            } else {
+                              toast.info(`${user.displayName || user.username} is already your pal!`);
+                            }
+                          }}
+                        >
+                          <UserPlus className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleStartChat(user)}
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                        </Button>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => handleStartChat(user)}
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                    </Button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

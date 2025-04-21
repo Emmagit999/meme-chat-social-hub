@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/context/auth-context";
@@ -14,6 +14,7 @@ import SearchPage from "@/pages/search-page";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import SplashScreen from "@/components/ui/splash-screen";
+import PalsPage from "@/pages/pals-page";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -72,6 +73,7 @@ function App() {
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
                 <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+                <Route path="/pals" element={<ProtectedRoute><PalsPage /></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

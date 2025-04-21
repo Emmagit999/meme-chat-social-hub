@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from '@/context/auth-context';
 import { TriangleIcon, Chrome } from 'lucide-react';
+import { toast } from "sonner";
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,7 +15,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -23,16 +24,68 @@ const AuthPage = () => {
     
     try {
       if (isLogin) {
-        await signInWithEmail(email, password);
+        // Simulate login success
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Create mock user data
+        const userData = {
+          id: "1",
+          username: email.split('@')[0],
+          displayName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
+          email: email,
+          avatar: "/assets/avatar1.jpg",
+          isPro: false
+        };
+        
+        login(userData);
+        toast.success("Login successful!");
         navigate('/');
       } else {
-        await signUpWithEmail(email, password, username);
+        // Simulate signup success
+        await new Promise(resolve => setTimeout(resolve, 800));
+        
+        // Create mock user data for new signup
+        const userData = {
+          id: Date.now().toString(),
+          username: username || email.split('@')[0],
+          displayName: username ? (username.charAt(0).toUpperCase() + username.slice(1)) : 
+                      (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)),
+          email: email,
+          avatar: "/assets/avatar3.jpg",
+          isPro: false
+        };
+        
+        login(userData);
+        toast.success("Account created successfully!");
+        navigate('/');
       }
     } catch (error) {
-      // Error is handled in the auth context
+      toast.error("Authentication failed. Please try again.");
+      console.error("Auth error:", error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    setLoading(true);
+    
+    // Simulate Google sign in
+    setTimeout(() => {
+      const userData = {
+        id: "google_user_1",
+        username: "google_user",
+        displayName: "Google User",
+        email: "google@example.com",
+        avatar: "/assets/avatar2.jpg",
+        isPro: true
+      };
+      
+      login(userData);
+      toast.success("Google sign in successful!");
+      navigate('/');
+      setLoading(false);
+    }, 1000);
   };
 
   return (
@@ -117,7 +170,8 @@ const AuthPage = () => {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => signInWithGoogle()}
+              onClick={handleGoogleSignIn}
+              disabled={loading}
             >
               <Chrome className="mr-2 h-4 w-4" />
               Google
