@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/context/auth-context";
@@ -15,46 +15,93 @@ import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import SplashScreen from "@/components/ui/splash-screen";
 import PalsPage from "@/pages/pals-page";
+import { useAuth } from "@/context/auth-context";
+
+// Create an AuthCheck component that uses the auth context
+const AuthCheck = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  console.log("AuthCheck - isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
+  
+  if (isLoading) {
+    return <SplashScreen />;
+  }
+  
+  if (!isAuthenticated) {
+    console.log("User not authenticated, redirecting to /auth");
+    return <Navigate to="/auth" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Create a component for the app routes to use the auth context
+const AppRoutes = () => {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  console.log("AppRoutes - isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
+  
+  if (isLoading) {
+    return <SplashScreen />;
+  }
+  
+  return (
+    <>
+      {isAuthenticated && <Navbar />}
+      <div className="pt-4">
+        <Routes>
+          <Route 
+            path="/auth" 
+            element={!isAuthenticated ? <AuthPage /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/" 
+            element={<AuthCheck><HomePage /></AuthCheck>} 
+          />
+          <Route 
+            path="/merge" 
+            element={<AuthCheck><MergePage /></AuthCheck>} 
+          />
+          <Route 
+            path="/roast" 
+            element={<AuthCheck><RoastPage /></AuthCheck>} 
+          />
+          <Route 
+            path="/profile" 
+            element={<AuthCheck><ProfilePage /></AuthCheck>} 
+          />
+          <Route 
+            path="/chat" 
+            element={<AuthCheck><ChatPage /></AuthCheck>} 
+          />
+          <Route 
+            path="/search" 
+            element={<AuthCheck><SearchPage /></AuthCheck>} 
+          />
+          <Route 
+            path="/pals" 
+            element={<AuthCheck><PalsPage /></AuthCheck>} 
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+    </>
+  );
+};
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in
-    const checkAuth = () => {
-      const user = localStorage.getItem("user");
-      setIsAuthenticated(!!user);
-      setIsLoading(false);
-    };
-
-    // Simulate loading time
-    setTimeout(checkAuth, 1500);
+    // Simulate a brief loading time for splash screen
+    const timer = setTimeout(() => {
+      setInitialLoading(false);
+    }, 1500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
-  // Auth context value
-  const auth = {
-    user: isAuthenticated ? JSON.parse(localStorage.getItem("user") || "{}") : null,
-    login: (userData: any) => {
-      localStorage.setItem("user", JSON.stringify(userData));
-      setIsAuthenticated(true);
-    },
-    logout: () => {
-      localStorage.removeItem("user");
-      setIsAuthenticated(false);
-    },
-    isAuthenticated,
-  };
-
-  // Protected route component that redirects if not logged in
-  const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-    if (!isAuthenticated) {
-      return <Navigate to="/auth" />;
-    }
-    return <>{children}</>;
-  };
-
-  if (isLoading) {
+  if (initialLoading) {
     return <SplashScreen />;
   }
 
@@ -63,20 +110,7 @@ function App() {
       <AuthProvider>
         <DataProvider>
           <Router>
-            {isAuthenticated && <Navbar />}
-            <div className="pt-4">
-              <Routes>
-                <Route path="/auth" element={!isAuthenticated ? <AuthPage /> : <Navigate to="/" />} />
-                <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-                <Route path="/merge" element={<ProtectedRoute><MergePage /></ProtectedRoute>} />
-                <Route path="/roast" element={<ProtectedRoute><RoastPage /></ProtectedRoute>} />
-                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                <Route path="/chat" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-                <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
-                <Route path="/pals" element={<ProtectedRoute><PalsPage /></ProtectedRoute>} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
+            <AppRoutes />
             <Toaster />
           </Router>
         </DataProvider>

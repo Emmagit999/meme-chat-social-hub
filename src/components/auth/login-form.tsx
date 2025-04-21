@@ -20,41 +20,63 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
     setIsLoading(true);
     
     try {
-      // Use signInWithEmail instead of login directly
-      await signInWithEmail(username, password);
+      console.log("Login form - Attempting to sign in with:", username);
       
-      // Create a mock user object (in a real app, this would come from the authentication response)
+      // Use signInWithEmail instead of login directly
+      const authData = await signInWithEmail(username, password);
+      console.log("Login form - Sign in successful, auth data:", authData);
+      
+      if (!authData || !authData.user) {
+        throw new Error("Authentication successful but no user data returned");
+      }
+      
+      // Create a user object from auth data
       const userData = {
-        id: "1",
-        username: username,
-        displayName: username,
-        email: username, // Using username as email for simplicity
-        avatar: "/assets/avatar1.jpg",
-        isPro: false
+        id: authData.user.id,
+        username: authData.user.user_metadata?.username || username.split('@')[0],
+        displayName: authData.user.user_metadata?.username || 
+                    (username.split('@')[0].charAt(0).toUpperCase() + username.split('@')[0].slice(1)),
+        email: authData.user.email || username,
+        avatar: authData.user.user_metadata?.avatar_url || "/assets/avatar1.jpg",
+        isPro: authData.user.user_metadata?.isPro || false
       };
       
-      // Call login with the user data object and null for session
-      login(userData, null);
+      // Call login with the user data object and auth data session
+      login(userData, authData.session);
+      
+      console.log("Login form - Updated user context, navigating to home");
       toast.success("Login successful!");
       
-      // Add navigation to the home page after successful login
-      navigate('/');
+      // Force a small delay before navigation to ensure state is updated
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
     } catch (error) {
       console.error("Login failed", error);
-      toast.error("Login failed. Please check your credentials.");
+      toast.error(error instanceof Error ? error.message : "Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    // In a real app, implement Google login
-    alert("Google login would be implemented here");
+  const handleGoogleLogin = async () => {
+    try {
+      setIsLoading(true);
+      await signInWithEmail("demo@example.com", "password123");
+      toast.success("Demo login successful!");
+      setTimeout(() => {
+        navigate('/');
+      }, 100);
+    } catch (error) {
+      console.error("Demo login failed", error);
+      toast.error("Demo login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handlePhoneLogin = () => {
-    // In a real app, implement phone login
-    alert("Phone login would be implemented here");
+    toast.info("Phone login not implemented yet");
   };
 
   return (
@@ -133,4 +155,3 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
     </div>
   );
 };
-

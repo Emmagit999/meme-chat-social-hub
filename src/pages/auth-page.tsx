@@ -15,51 +15,80 @@ const AuthPage = () => {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, login } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  
+  useEffect(() => {
+    // Redirect to home if already authenticated
+    if (isAuthenticated) {
+      console.log("AuthPage - User already authenticated, redirecting to home");
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
     try {
+      console.log("AuthPage - Form submitted:", isLogin ? "login" : "signup");
+      
       if (isLogin) {
-        await signInWithEmail(email, password);
+        const authData = await signInWithEmail(email, password);
+        console.log("AuthPage - Login successful:", authData);
+        
+        if (!authData || !authData.user) {
+          throw new Error("Authentication successful but no user data returned");
+        }
         
         const userData = {
-          id: "1",
-          username: email.split('@')[0],
-          displayName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-          email: email,
-          avatar: "/assets/avatar1.jpg",
-          isPro: false
+          id: authData.user.id,
+          username: authData.user.user_metadata?.username || email.split('@')[0],
+          displayName: authData.user.user_metadata?.username || 
+                      (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)),
+          email: authData.user.email || email,
+          avatar: authData.user.user_metadata?.avatar_url || "/assets/avatar1.jpg",
+          isPro: authData.user.user_metadata?.isPro || false
         };
         
-        // Use the userData object directly as it matches the expected parameters
-        login(userData, null);
+        // Use the userData object and auth data session
+        login(userData, authData.session);
         toast.success("Login successful!");
-        navigate('/');
+        
+        // Add a small delay to allow state updates to propagate
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
       } else {
-        await signUpWithEmail(email, password, username);
+        const authData = await signUpWithEmail(email, password, username);
+        console.log("AuthPage - Signup successful:", authData);
+        
+        if (!authData || !authData.user) {
+          throw new Error("Sign up successful but no user data returned");
+        }
         
         const userData = {
-          id: Date.now().toString(),
+          id: authData.user.id,
           username: username || email.split('@')[0],
           displayName: username ? (username.charAt(0).toUpperCase() + username.slice(1)) : 
                       (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)),
-          email: email,
+          email: authData.user.email || email,
           avatar: "/assets/avatar3.jpg",
           isPro: false
         };
         
-        // Use the userData object directly as it matches the expected parameters
-        login(userData, null);
+        // Use the userData object and auth data session
+        login(userData, authData.session);
         toast.success("Account created successfully!");
-        navigate('/');
+        
+        // Add a small delay to allow state updates to propagate
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
       }
     } catch (error) {
-      toast.error("Authentication failed. Please try again.");
       console.error("Auth error:", error);
+      toast.error(error instanceof Error ? error.message : "Authentication failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -69,8 +98,11 @@ const AuthPage = () => {
     setLoading(true);
     
     try {
+      console.log("AuthPage - Attempting Google sign in");
       await signInWithGoogle();
       
+      // Note: actual user data will be handled by the auth state change listener
+      // This is just for demo purposes
       const userData = {
         id: "google_user_1",
         username: "google_user",
@@ -80,17 +112,21 @@ const AuthPage = () => {
         isPro: true
       };
       
-      // Use the userData object directly as it matches the expected parameters
+      // In a real app, this would be handled by the auth state change listener
       login(userData, null);
-      toast.success("Google sign in successful!");
-      navigate('/');
+      toast.success("Google sign in initiated!");
     } catch (error) {
-      toast.error("Google sign in failed. Please try again.");
       console.error("Google sign in error:", error);
+      toast.error(error instanceof Error ? error.message : "Google sign in failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  // If already authenticated, don't render anything (useEffect will redirect)
+  if (isAuthenticated) {
+    return <div className="flex justify-center items-center h-screen">Redirecting...</div>;
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 bg-[#121212]">

@@ -1,14 +1,23 @@
 
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/auth-context";
 
 const Index = () => {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    // Redirect to the main app
-    navigate("/auth");
-  }, [navigate]);
+    // Only redirect if authentication check is complete
+    if (!isLoading) {
+      // Redirect based on authentication status
+      if (isAuthenticated) {
+        navigate("/home");
+      } else {
+        navigate("/auth");
+      }
+    }
+  }, [navigate, isAuthenticated, isLoading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-memeBlack">
