@@ -25,24 +25,23 @@ import { MediaUpload } from "./media-upload";
 interface CreatePostFormProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultType?: 'meme' | 'roast' | 'joke';
 }
 
-export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose }) => {
+export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose, defaultType = 'meme' }) => {
   const { user } = useAuth();
   const { addPost } = useData();
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke'>('meme');
+  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke'>(defaultType);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // NEW: handle uploads via MediaUpload
   const handleMediaUploaded = (url: string, type: "image" | "video") => {
     setMediaPreview(url);
     setMediaType(type);
   };
 
-  // UPDATED: Remove mock upload, save real media url
   const handlePostSubmit = () => {
     if (!user) return;
     
@@ -72,7 +71,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose 
   
   const resetForm = () => {
     setContent('');
-    setPostType('meme');
+    setPostType(defaultType || 'meme');
     setMediaPreview(null);
     setMediaType(null);
   };
