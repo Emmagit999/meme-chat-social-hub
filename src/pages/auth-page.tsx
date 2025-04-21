@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -24,10 +23,8 @@ const AuthPage = () => {
     
     try {
       if (isLogin) {
-        // Simulate login success
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await signInWithEmail(email, password);
         
-        // Create mock user data
         const userData = {
           id: "1",
           username: email.split('@')[0],
@@ -41,10 +38,8 @@ const AuthPage = () => {
         toast.success("Login successful!");
         navigate('/');
       } else {
-        // Simulate signup success
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await signUpWithEmail(email, password, username);
         
-        // Create mock user data for new signup
         const userData = {
           id: Date.now().toString(),
           username: username || email.split('@')[0],
@@ -67,11 +62,12 @@ const AuthPage = () => {
     }
   };
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
     
-    // Simulate Google sign in
-    setTimeout(() => {
+    try {
+      await signInWithGoogle();
+      
       const userData = {
         id: "google_user_1",
         username: "google_user",
@@ -84,8 +80,12 @@ const AuthPage = () => {
       login(userData);
       toast.success("Google sign in successful!");
       navigate('/');
+    } catch (error) {
+      toast.error("Google sign in failed. Please try again.");
+      console.error("Google sign in error:", error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   return (

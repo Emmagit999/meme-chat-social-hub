@@ -1,12 +1,11 @@
-
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, Home, Message, Search, User, LogOut, Bell, Github, UserPlus } from 'lucide-react';
+import { Menu, Home, MessageSquare, Search, User, LogOut, Bell, Github, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useAuth } from '@/context/auth-context';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import AppLogo from '@/components/ui/logo';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -17,9 +16,8 @@ export const Navbar = () => {
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const { user, logout } = useAuth();
-  const isMobile = useMediaQuery('(max-width: 768px)');
+  const isMobile = useIsMobile();
   
-  // Get notifications from localStorage or generate some mock ones
   const getNotifications = () => {
     const stored = localStorage.getItem('notifications');
     if (stored) {
@@ -86,7 +84,7 @@ export const Navbar = () => {
     { name: 'Home', path: '/', icon: <Home className="h-5 w-5" /> },
     { name: 'Merge', path: '/merge', icon: <Github className="h-5 w-5" /> },
     { name: 'Pals', path: '/pals', icon: <UserPlus className="h-5 w-5" /> },
-    { name: 'Chat', path: '/chat', icon: <Message className="h-5 w-5" /> },
+    { name: 'Chat', path: '/chat', icon: <MessageSquare className="h-5 w-5" /> },
     { name: 'Search', path: '/search', icon: <Search className="h-5 w-5" /> },
     { name: 'Profile', path: '/profile', icon: <User className="h-5 w-5" /> },
   ];
