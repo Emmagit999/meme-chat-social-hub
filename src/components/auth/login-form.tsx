@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth-context";
-import { Chrome } from 'lucide-react'; // Replace FcGoogle with a Lucide icon
+import { Chrome } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, signInWithEmail } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +36,12 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
       // Call login with the user data object and null for session
       login(userData, null);
       toast.success("Login successful!");
+      
+      // Add navigation to the home page after successful login
+      navigate('/');
     } catch (error) {
       console.error("Login failed", error);
+      toast.error("Login failed. Please check your credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -127,3 +133,4 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
     </div>
   );
 };
+
