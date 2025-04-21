@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
@@ -8,8 +9,8 @@ interface AuthContextType extends AuthSession {
   signUpWithEmail: (email: string, password: string, username: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  // Adding aliases to match component usage
-  login: (email: string, password: string) => Promise<void>;
+  // Adding aliases to match component usage - adding explicit parameters to match usage
+  login: (userData: AuthUser, session: any) => void;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -129,8 +130,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Updated login function to accept two parameters
+  const login = (userData: AuthUser, session: any) => {
+    setSession({
+      user: userData,
+      isLoading: false,
+      isAuthenticated: true,
+    });
+  };
+
   // Create alias functions to match component usage
-  const login = signInWithEmail;
   const register = (username: string, email: string, password: string) => 
     signUpWithEmail(email, password, username);
   const logout = signOut;

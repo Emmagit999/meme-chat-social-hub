@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,8 @@ const AuthPage = () => {
           isPro: false
         };
         
-        login(userData);
+        // Use the userData object directly as it matches the expected parameters
+        login(userData, null);
         toast.success("Login successful!");
         navigate('/');
       } else {
@@ -50,7 +52,8 @@ const AuthPage = () => {
           isPro: false
         };
         
-        login(userData);
+        // Use the userData object directly as it matches the expected parameters
+        login(userData, null);
         toast.success("Account created successfully!");
         navigate('/');
       }
@@ -77,7 +80,8 @@ const AuthPage = () => {
         isPro: true
       };
       
-      login(userData);
+      // Use the userData object directly as it matches the expected parameters
+      login(userData, null);
       toast.success("Google sign in successful!");
       navigate('/');
     } catch (error) {
