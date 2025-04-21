@@ -8,13 +8,14 @@ import { MessageCircle, X, Heart, Shuffle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const MergePage: React.FC = () => {
   const { startNewChat } = useChat();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [swiped, setSwiped] = useState(false);
   const [direction, setDirection] = useState<'left' | 'right' | null>(null);
@@ -130,11 +131,16 @@ const MergePage: React.FC = () => {
     }
     
     // Start a chat with this user
-    startNewChat(currentUser.id);
+    const chatId = startNewChat(currentUser.id);
     
     toast.success(`You've matched with ${currentUser.displayName || currentUser.username}!`);
     
     goToNextUser();
+    
+    // Navigate to chat after a brief delay to let the swipe animation complete
+    setTimeout(() => {
+      navigate(`/chat`);
+    }, 500);
   };
   
   const handleSkip = () => {
@@ -182,7 +188,7 @@ const MergePage: React.FC = () => {
   );
 
   return (
-    <div className="container py-6">
+    <div className="container py-6 px-4">
       <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
@@ -200,22 +206,22 @@ const MergePage: React.FC = () => {
               <CardHeader className="text-center pb-0">
                 <div className="mx-auto mb-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={currentUser.avatar} alt={currentUser.username} />
+                    <AvatarImage src={currentUser?.avatar} alt={currentUser?.username} />
                     <AvatarFallback className="text-4xl">
-                      {currentUser.username.substring(0, 2).toUpperCase()}
+                      {currentUser?.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex items-center justify-center gap-2">
                   <h2 className="text-xl font-bold">
-                    {currentUser.displayName || currentUser.username}
+                    {currentUser?.displayName || currentUser?.username}
                   </h2>
-                  {onlineUsers.includes(currentUser.id) && (
+                  {onlineUsers.includes(currentUser?.id) && (
                     <span className="h-3 w-3 bg-green-500 rounded-full"></span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">@{currentUser.username}</p>
-                {currentUser.isPro && (
+                <p className="text-sm text-muted-foreground">@{currentUser?.username}</p>
+                {currentUser?.isPro && (
                   <div className="mt-2">
                     <span className="px-2 py-1 bg-memeGreen/20 text-memeGreen rounded-full text-xs">
                       Pro Memer
@@ -224,7 +230,7 @@ const MergePage: React.FC = () => {
                 )}
               </CardHeader>
               <CardContent className="text-center py-6">
-                <p>{currentUser.bio || "No bio yet. Just here for the memes!"}</p>
+                <p>{currentUser?.bio || "No bio yet. Just here for the memes!"}</p>
               </CardContent>
               <CardFooter className="flex justify-center gap-4">
                 <Button 
@@ -249,66 +255,68 @@ const MergePage: React.FC = () => {
           </div>
         </div>
         
-        <div className="flex-1">
-          <Card>
-            <CardHeader>
-              <h2 className="text-xl font-semibold">Online Memers</h2>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {onlineFilteredUsers.length === 0 ? (
-                  <p className="text-center text-muted-foreground py-4">
-                    No users online right now
-                  </p>
-                ) : (
-                  onlineFilteredUsers.map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <Avatar>
-                            <AvatarImage src={user.avatar} alt={user.username} />
-                            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+        {(!isMobile || onlineFilteredUsers.length > 0) && (
+          <div className={`flex-1 ${isMobile ? 'mt-8' : ''}`}>
+            <Card>
+              <CardHeader>
+                <h2 className="text-xl font-semibold">Online Memers</h2>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {onlineFilteredUsers.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-4">
+                      No users online right now
+                    </p>
+                  ) : (
+                    onlineFilteredUsers.map(user => (
+                      <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="relative">
+                            <Avatar>
+                              <AvatarImage src={user.avatar} alt={user.username} />
+                              <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium">{user.displayName || user.username}</h3>
+                            <p className="text-sm text-muted-foreground">@{user.username}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-medium">{user.displayName || user.username}</h3>
-                          <p className="text-sm text-muted-foreground">@{user.username}</p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => {
+                              // Add to pals
+                              const pals = JSON.parse(localStorage.getItem('pals') || '[]');
+                              if (!pals.some(p => p.id === user.id)) {
+                                pals.push(user);
+                                localStorage.setItem('pals', JSON.stringify(pals));
+                                toast.success(`Added ${user.displayName || user.username} as a pal!`);
+                              } else {
+                                toast.info(`${user.displayName || user.username} is already your pal!`);
+                              }
+                            }}
+                          >
+                            <UserPlus className="h-5 w-5" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleStartChat(user)}
+                          >
+                            <MessageCircle className="h-5 w-5" />
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => {
-                            // Add to pals
-                            const pals = JSON.parse(localStorage.getItem('pals') || '[]');
-                            if (!pals.some(p => p.id === user.id)) {
-                              pals.push(user);
-                              localStorage.setItem('pals', JSON.stringify(pals));
-                              toast.success(`Added ${user.displayName || user.username} as a pal!`);
-                            } else {
-                              toast.info(`${user.displayName || user.username} is already your pal!`);
-                            }
-                          }}
-                        >
-                          <UserPlus className="h-5 w-5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          onClick={() => handleStartChat(user)}
-                        >
-                          <MessageCircle className="h-5 w-5" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );

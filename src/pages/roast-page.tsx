@@ -5,15 +5,17 @@ import { PostCard } from "@/components/posts/post-card";
 import { CreatePostForm } from "@/components/posts/create-post-form";
 import { useData } from "@/context/data-context";
 import { Plus } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const RoastPage: React.FC = () => {
   const { posts, isLoading } = useData();
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const isMobile = useIsMobile();
   
   const roastPosts = posts.filter(post => post.type === 'roast' || post.type === 'joke');
 
   return (
-    <div className="container py-6">
+    <div className="container py-6 px-4 md:px-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Roast Zone</h1>
         <Button 
@@ -21,7 +23,7 @@ const RoastPage: React.FC = () => {
           className="bg-memeGreen hover:bg-memeGreen/90 flex items-center gap-2"
         >
           <Plus className="h-5 w-5" />
-          <span>Create Roast</span>
+          <span className={isMobile ? "" : "inline"}>Create Roast</span>
         </Button>
       </div>
       
@@ -55,6 +57,7 @@ const RoastPage: React.FC = () => {
       <CreatePostForm 
         isOpen={isCreatePostOpen} 
         onClose={() => setIsCreatePostOpen(false)} 
+        defaultType="roast"
       />
       
       <Button

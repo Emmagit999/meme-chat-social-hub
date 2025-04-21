@@ -16,6 +16,7 @@ import NotFound from "@/pages/not-found";
 import SplashScreen from "@/components/ui/splash-screen";
 import PalsPage from "@/pages/pals-page";
 import { useAuth } from "@/context/auth-context";
+import Index from "@/pages/Index";
 
 // Create an AuthCheck component that uses the auth context
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
@@ -48,14 +49,15 @@ const AppRoutes = () => {
   return (
     <>
       {isAuthenticated && <Navbar />}
-      <div className="pt-4">
+      <div className={`${isAuthenticated ? 'pt-4' : ''}`}>
         <Routes>
+          <Route path="/" element={<Index />} />
           <Route 
             path="/auth" 
-            element={!isAuthenticated ? <AuthPage /> : <Navigate to="/" />} 
+            element={!isAuthenticated ? <AuthPage /> : <Navigate to="/home" />} 
           />
           <Route 
-            path="/" 
+            path="/home" 
             element={<AuthCheck><HomePage /></AuthCheck>} 
           />
           <Route 
@@ -68,6 +70,10 @@ const AppRoutes = () => {
           />
           <Route 
             path="/profile" 
+            element={<AuthCheck><ProfilePage /></AuthCheck>} 
+          />
+          <Route 
+            path="/profile/:userId" 
             element={<AuthCheck><ProfilePage /></AuthCheck>} 
           />
           <Route 
@@ -96,7 +102,7 @@ function App() {
     // Simulate a brief loading time for splash screen
     const timer = setTimeout(() => {
       setInitialLoading(false);
-    }, 1500);
+    }, 1000);
     
     return () => clearTimeout(timer);
   }, []);
