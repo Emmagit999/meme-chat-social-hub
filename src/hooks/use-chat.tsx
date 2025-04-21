@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Message, Chat, User } from '@/types';
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data
 const mockChats: Chat[] = [
@@ -94,6 +95,7 @@ export const useChat = () => {
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [isLoading, setIsLoading] = useState(true);
+  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
 
   // Load data from localStorage on initial render
   useEffect(() => {
@@ -214,6 +216,8 @@ export const useChat = () => {
                chat.participants.includes(message.receiverId);
       });
       
+      setFilteredMessages(chatMessages);
+      
       // Mark all unread messages as read
       if (user) {
         setMessages(prevMessages => 
@@ -234,6 +238,8 @@ export const useChat = () => {
           )
         );
       }
+    } else {
+      setFilteredMessages([]);
     }
   }, [activeChat, messages, chats, user]);
 
@@ -397,7 +403,8 @@ export const useChat = () => {
 
   return {
     chats,
-    messages,
+    messages: filteredMessages,
+    allMessages: messages,
     activeChat,
     isLoading,
     setActiveChat,
