@@ -5,19 +5,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth-context";
 import { Chrome } from 'lucide-react'; // Replace FcGoogle with a Lucide icon
+import { toast } from 'sonner';
 
 export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, signInWithEmail } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      await login(username, password);
+      // Use signInWithEmail instead of login directly
+      await signInWithEmail(username, password);
+      
+      // Create a mock user object (in a real app, this would come from the authentication response)
+      const userData = {
+        id: "1",
+        username: username,
+        displayName: username,
+        email: username, // Using username as email for simplicity
+        avatar: "/assets/avatar1.jpg",
+        isPro: false
+      };
+      
+      // Call login with the user data object and null for session
+      login(userData, null);
+      toast.success("Login successful!");
     } catch (error) {
       console.error("Login failed", error);
     } finally {
