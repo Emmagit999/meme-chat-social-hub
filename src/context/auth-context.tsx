@@ -4,14 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
 import { toast } from 'sonner';
 
+interface AuthData {
+  user: any;
+  session: any;
+}
+
 interface AuthContextType extends AuthSession {
-  signInWithEmail: (email: string, password: string) => Promise<void>;
-  signUpWithEmail: (email: string, password: string, username: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<AuthData | null>;
+  signUpWithEmail: (email: string, password: string, username: string) => Promise<AuthData | null>;
+  signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
   // Adding aliases to match component usage - adding explicit parameters to match usage
   login: (userData: AuthUser, session: any) => void;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<AuthData | null>;
   logout: () => Promise<void>;
 }
 
@@ -92,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmail = async (email: string, password: string): Promise<AuthData | null> => {
     try {
       console.log("Attempting to sign in with email:", email);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -100,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Sign in error:", error.message);
         toast.error(error.message || 'Failed to sign in');
-        throw error;
+        return null;
       }
       
       console.log("Sign in successful:", data?.user?.id);
@@ -109,11 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Sign in exception:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to sign in');
-      throw error;
+      return null;
     }
   };
 
-  const signUpWithEmail = async (email: string, password: string, username: string) => {
+  const signUpWithEmail = async (email: string, password: string, username: string): Promise<AuthData | null> => {
     try {
       console.log("Attempting to sign up with email:", email);
       const { data, error } = await supabase.auth.signUp({
@@ -129,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Sign up error:", error.message);
         toast.error(error.message || 'Failed to sign up');
-        throw error;
+        return null;
       }
       
       console.log("Sign up successful:", data?.user?.id);
@@ -138,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Sign up exception:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to sign up');
-      throw error;
+      return null;
     }
   };
 

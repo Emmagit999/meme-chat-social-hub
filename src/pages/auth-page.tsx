@@ -38,7 +38,7 @@ const AuthPage = () => {
         console.log("AuthPage - Login successful:", authData);
         
         if (!authData || !authData.user) {
-          throw new Error("Authentication successful but no user data returned");
+          throw new Error("Authentication failed or no user data returned");
         }
         
         const userData = {
@@ -58,13 +58,13 @@ const AuthPage = () => {
         // Add a small delay to allow state updates to propagate
         setTimeout(() => {
           navigate('/');
-        }, 100);
+        }, 300);
       } else {
         const authData = await signUpWithEmail(email, password, username);
         console.log("AuthPage - Signup successful:", authData);
         
         if (!authData || !authData.user) {
-          throw new Error("Sign up successful but no user data returned");
+          throw new Error("Sign up failed or no user data returned");
         }
         
         const userData = {
@@ -84,7 +84,7 @@ const AuthPage = () => {
         // Add a small delay to allow state updates to propagate
         setTimeout(() => {
           navigate('/');
-        }, 100);
+        }, 300);
       }
     } catch (error) {
       console.error("Auth error:", error);
@@ -99,22 +99,13 @@ const AuthPage = () => {
     
     try {
       console.log("AuthPage - Attempting Google sign in");
-      await signInWithGoogle();
+      const data = await signInWithGoogle();
       
-      // Note: actual user data will be handled by the auth state change listener
-      // This is just for demo purposes
-      const userData = {
-        id: "google_user_1",
-        username: "google_user",
-        displayName: "Google User",
-        email: "google@example.com",
-        avatar: "/assets/avatar2.jpg",
-        isPro: true
-      };
-      
-      // In a real app, this would be handled by the auth state change listener
-      login(userData, null);
-      toast.success("Google sign in initiated!");
+      // Google sign-in is handled by redirects, so this part will not execute immediately
+      // For demo purposes only
+      if (data && data.provider === 'google') {
+        toast.success("Google sign in initiated!");
+      }
     } catch (error) {
       console.error("Google sign in error:", error);
       toast.error(error instanceof Error ? error.message : "Google sign in failed. Please try again.");

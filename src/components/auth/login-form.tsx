@@ -22,12 +22,12 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
     try {
       console.log("Login form - Attempting to sign in with:", username);
       
-      // Use signInWithEmail instead of login directly
+      // Use signInWithEmail and handle null response
       const authData = await signInWithEmail(username, password);
       console.log("Login form - Sign in successful, auth data:", authData);
       
       if (!authData || !authData.user) {
-        throw new Error("Authentication successful but no user data returned");
+        throw new Error("Authentication failed or no user data returned");
       }
       
       // Create a user object from auth data
@@ -50,7 +50,7 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
       // Force a small delay before navigation to ensure state is updated
       setTimeout(() => {
         navigate('/');
-      }, 100);
+      }, 300);
     } catch (error) {
       console.error("Login failed", error);
       toast.error(error instanceof Error ? error.message : "Login failed. Please check your credentials.");
@@ -62,11 +62,28 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
-      await signInWithEmail("demo@example.com", "password123");
-      toast.success("Demo login successful!");
-      setTimeout(() => {
-        navigate('/');
-      }, 100);
+      // For demo login, use email/password method with default credentials
+      const authData = await signInWithEmail("demo@example.com", "password123");
+      
+      if (authData && authData.user) {
+        const userData = {
+          id: authData.user.id,
+          username: "demolord",
+          displayName: "Demo User",
+          email: "demo@example.com",
+          avatar: "/assets/avatar1.jpg",
+          isPro: true
+        };
+        
+        login(userData, authData.session);
+        toast.success("Demo login successful!");
+        
+        setTimeout(() => {
+          navigate('/');
+        }, 300);
+      } else {
+        throw new Error("Demo login failed");
+      }
     } catch (error) {
       console.error("Demo login failed", error);
       toast.error("Demo login failed. Please try again.");
@@ -132,7 +149,7 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
           onClick={handleGoogleLogin} 
           className="flex items-center justify-center gap-2"
         >
-          <Chrome className="h-5 w-5" /> {/* Replace FcGoogle with Chrome icon */}
+          <Chrome className="h-5 w-5" />
           Google
         </Button>
         <Button 

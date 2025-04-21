@@ -10,10 +10,14 @@ const Index = () => {
   useEffect(() => {
     // Only redirect if authentication check is complete
     if (!isLoading) {
+      console.log("Index page - Auth state:", isAuthenticated ? "authenticated" : "not authenticated");
+      
       // Redirect based on authentication status
       if (isAuthenticated) {
+        console.log("Index page - Redirecting to /home");
         navigate("/home");
       } else {
+        console.log("Index page - Redirecting to /auth");
         navigate("/auth");
       }
     }
