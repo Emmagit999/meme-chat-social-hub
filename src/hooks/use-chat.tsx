@@ -5,7 +5,7 @@ import { Message, Chat, User } from '@/types';
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-// Storage keys for localStorage
+// Storage keys for localStorage - we'll use these as fallback only
 const CHATS_STORAGE_KEY = 'memechat_chats';
 const MESSAGES_STORAGE_KEY = 'memechat_messages';
 const USERS_STORAGE_KEY = 'memechat_users';
@@ -19,90 +19,137 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
 
-  // Load data from localStorage on initial render
+  // Load data on initial render
   useEffect(() => {
     if (user) {
-      const loadData = () => {
-        // Load users - only real users, no bots
-        const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-        if (savedUsers) {
-          try {
-            const parsedUsers = JSON.parse(savedUsers);
-            // Convert string dates back to Date objects and filter out bot accounts
-            const formattedUsers = parsedUsers
-              .map((u: any) => ({
-                ...u,
-                createdAt: new Date(u.createdAt)
-              }))
-              .filter((u: User) => isRealUser(u.id));
-            
-            setUsers(formattedUsers);
-          } catch (error) {
-            console.error('Error parsing saved users:', error);
-            setUsers([]);
+      const loadData = async () => {
+        try {
+          // Try to fetch users from Supabase
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*');
+          
+          if (profilesError) {
+            console.error('Error fetching profiles from Supabase:', profilesError);
+            fallbackToLocalStorage();
+            return;
           }
-        } else {
-          // Initialize with empty users array - we don't want to use fake users anymore
-          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
-          setUsers([]);
-        }
-        
-        // Load chats - only chats with real users
-        const savedChats = localStorage.getItem(CHATS_STORAGE_KEY);
-        if (savedChats) {
-          try {
-            const parsedChats = JSON.parse(savedChats);
-            // Convert string dates back to Date objects
-            const formattedChats = parsedChats.map((chat: any) => ({
-              ...chat,
-              lastMessageDate: chat.lastMessageDate ? new Date(chat.lastMessageDate) : undefined
+          
+          // Convert Supabase profiles to User objects
+          if (profilesData && profilesData.length > 0) {
+            const realUsers = profilesData.map((profile: any) => ({
+              id: profile.id,
+              username: profile.username || 'user',
+              displayName: profile.username || 'User',
+              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+              createdAt: new Date(profile.updated_at || new Date()),
+              bio: profile.bio || '',
+              isPro: profile.is_pro || false
             }));
             
-            // Filter chats for current user and only real users
-            const userChats = formattedChats.filter((chat: Chat) => 
-              chat.participants.includes(user.id) && 
-              chat.participants.every(isRealUser)
-            );
+            setUsers(realUsers);
             
-            setChats(userChats);
-          } catch (error) {
-            console.error('Error parsing saved chats:', error);
-            setChats([]);
+            // Continue with loading chats and messages from localStorage for now
+            loadChatsAndMessages(realUsers);
+          } else {
+            // No profiles found, fall back to localStorage
+            fallbackToLocalStorage();
           }
-        } else {
-          localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify([]));
-          setChats([]);
+        } catch (error) {
+          console.error('Error in loadData:', error);
+          fallbackToLocalStorage();
+        } finally {
+          setIsLoading(false);
         }
-        
-        // Load messages - only messages with real users
-        const savedMessages = localStorage.getItem(MESSAGES_STORAGE_KEY);
-        if (savedMessages) {
-          try {
-            const parsedMessages = JSON.parse(savedMessages);
-            // Convert string dates back to Date objects and filter out bot messages
-            const formattedMessages = parsedMessages
-              .map((message: any) => ({
-                ...message,
-                createdAt: new Date(message.createdAt)
-              }))
-              .filter((message: Message) => isRealUser(message.senderId) && isRealUser(message.receiverId));
-            
-            setMessages(formattedMessages);
-          } catch (error) {
-            console.error('Error parsing saved messages:', error);
-            setMessages([]);
-          }
-        } else {
-          localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify([]));
-          setMessages([]);
-        }
-        
-        setIsLoading(false);
       };
       
       loadData();
     }
   }, [user]);
+
+  // Fallback to localStorage if Supabase fails
+  const fallbackToLocalStorage = () => {
+    console.log('Falling back to localStorage for user data');
+    
+    // Load users - only real users, no bots
+    const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+    if (savedUsers) {
+      try {
+        const parsedUsers = JSON.parse(savedUsers);
+        // Convert string dates back to Date objects and filter out bot accounts
+        const formattedUsers = parsedUsers
+          .map((u: any) => ({
+            ...u,
+            createdAt: new Date(u.createdAt)
+          }))
+          .filter((u: User) => isRealUser(u.id));
+        
+        setUsers(formattedUsers);
+      } catch (error) {
+        console.error('Error parsing saved users:', error);
+        setUsers([]);
+      }
+    } else {
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify([]));
+      setUsers([]);
+    }
+    
+    // Load chats and messages
+    loadChatsAndMessages(users);
+  };
+
+  // Load chats and messages from localStorage
+  const loadChatsAndMessages = (usersList: User[]) => {
+    // Load chats - only chats with real users
+    const savedChats = localStorage.getItem(CHATS_STORAGE_KEY);
+    if (savedChats && user) {
+      try {
+        const parsedChats = JSON.parse(savedChats);
+        // Convert string dates back to Date objects
+        const formattedChats = parsedChats.map((chat: any) => ({
+          ...chat,
+          lastMessageDate: chat.lastMessageDate ? new Date(chat.lastMessageDate) : undefined
+        }));
+        
+        // Filter chats for current user and only real users
+        const userChats = formattedChats.filter((chat: Chat) => 
+          chat.participants.includes(user.id) && 
+          chat.participants.every(isRealUser)
+        );
+        
+        setChats(userChats);
+      } catch (error) {
+        console.error('Error parsing saved chats:', error);
+        setChats([]);
+      }
+    } else {
+      localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify([]));
+      setChats([]);
+    }
+    
+    // Load messages - only messages with real users
+    const savedMessages = localStorage.getItem(MESSAGES_STORAGE_KEY);
+    if (savedMessages) {
+      try {
+        const parsedMessages = JSON.parse(savedMessages);
+        // Convert string dates back to Date objects and filter out bot messages
+        const formattedMessages = parsedMessages
+          .map((message: any) => ({
+            ...message,
+            createdAt: new Date(message.createdAt)
+          }))
+          .filter((message: Message) => isRealUser(message.senderId) && isRealUser(message.receiverId));
+        
+        setMessages(formattedMessages);
+      } catch (error) {
+        console.error('Error parsing saved messages:', error);
+        setMessages([]);
+      }
+    } else {
+      localStorage.setItem(MESSAGES_STORAGE_KEY, JSON.stringify([]));
+      setMessages([]);
+    }
+  };
 
   // Update localStorage whenever the data changes
   useEffect(() => {
@@ -164,7 +211,7 @@ export const useChat = () => {
     }
   }, [activeChat, messages, chats, user]);
 
-  const sendMessage = (content: string) => {
+  const sendMessage = async (content: string) => {
     if (!user || !activeChat) {
       toast.error("Cannot send message");
       return;
@@ -202,9 +249,17 @@ export const useChat = () => {
       )
     );
 
-    // In a real app, this is where we would send the message to the server
-    
-    toast.success("Message sent");
+    // In a real app, send message to Supabase
+    try {
+      // This is where we would save the message to Supabase
+      // const { error } = await supabase.from('messages').insert([newMessage]);
+      // if (error) throw error;
+      
+      toast.success("Message sent");
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error("Failed to send message");
+    }
   };
 
   // Helper to check if a user is a real user (not a bot account)
@@ -251,55 +306,95 @@ export const useChat = () => {
     return newChatId;
   };
 
-  // Function to get user suggestions for the Merge feature - only real users
-  const getSuggestedUsers = (): User[] => {
+  // Function to get user suggestions - only real users from Supabase
+  const getSuggestedUsers = async (): Promise<User[]> => {
     if (!user) return [];
     
-    // Get real users from Supabase
-    // In a real app, you would make a Supabase query here
-    // For now, we'll get all users from localStorage and filter out bots
-    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-    if (storedUsers) {
-      try {
-        const parsedUsers = JSON.parse(storedUsers);
-        // Convert string dates back to Date objects and filter out bot accounts
-        const formattedUsers = parsedUsers
-          .map((u: any) => ({
-            ...u,
-            createdAt: new Date(u.createdAt)
-          }))
-          .filter((u: User) => isRealUser(u.id) && u.id !== user.id);
-        
-        return formattedUsers;
-      } catch (error) {
-        console.error('Error parsing saved users:', error);
+    try {
+      // Get real users from Supabase
+      const { data: profilesData, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', user.id);
+      
+      if (error) {
+        console.error('Error fetching profiles from Supabase:', error);
+        return [];
       }
+      
+      // Convert Supabase profiles to User objects
+      if (profilesData && profilesData.length > 0) {
+        return profilesData.map((profile: any) => ({
+          id: profile.id,
+          username: profile.username || 'user',
+          displayName: profile.username || 'User',
+          avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+          createdAt: new Date(profile.updated_at || new Date()),
+          bio: profile.bio || '',
+          isPro: profile.is_pro || false
+        }));
+      }
+      
+      // Fallback to localStorage if no Supabase profiles found
+      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+      if (storedUsers) {
+        try {
+          const parsedUsers = JSON.parse(storedUsers);
+          // Convert string dates back to Date objects and filter out bot accounts and current user
+          return parsedUsers
+            .map((u: any) => ({
+              ...u,
+              createdAt: new Date(u.createdAt)
+            }))
+            .filter((u: User) => isRealUser(u.id) && u.id !== user.id);
+        } catch (error) {
+          console.error('Error parsing saved users:', error);
+        }
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error in getSuggestedUsers:', error);
+      return [];
     }
-    
-    // If no users in storage, return empty array
-    return [];
   };
 
   // Function to register a new real user in the chat system
-  const registerUser = (newUser: User) => {
+  const registerUser = async (newUser: User) => {
     if (!newUser.id || !newUser.username) {
       console.error("Invalid user data");
       return;
     }
     
     // Check if user already exists
-    const existingUsers = users;
-    if (existingUsers.some(u => u.id === newUser.id)) {
+    const existingUser = users.find(u => u.id === newUser.id);
+    if (existingUser) {
       // User already exists, don't add again
       return;
     }
     
-    // Add new user to storage
-    const updatedUsers = [...existingUsers, newUser];
+    // Add new user to local state
+    const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
+    
+    // Add to localStorage as backup
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
     
-    toast.success(`${newUser.displayName || newUser.username} added to chat system`);
+    try {
+      // This is where we would update the user profile in Supabase
+      // const { error } = await supabase.from('profiles').upsert({
+      //   id: newUser.id,
+      //   username: newUser.username,
+      //   avatar_url: newUser.avatar,
+      //   updated_at: new Date()
+      // });
+      // if (error) throw error;
+      
+      toast.success(`${newUser.displayName || newUser.username} added to chat system`);
+    } catch (error) {
+      console.error('Error registering user in Supabase:', error);
+      toast.error(`Failed to register ${newUser.username} in the system`);
+    }
   };
 
   // Function to get user by ID

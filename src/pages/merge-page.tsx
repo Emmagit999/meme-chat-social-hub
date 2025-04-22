@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { supabase } from "@/integrations/supabase/client";
 
 const MergePage: React.FC = () => {
   const { startNewChat, registerUser } = useChat();
@@ -33,59 +34,55 @@ const MergePage: React.FC = () => {
   // Get online users and people to merge with
   useEffect(() => {
     const loadUsers = async () => {
-      // In a real app, this would fetch real users from the backend
-      const fetchRealUsers = async () => {
-        // This is where you would make a Supabase query to get real users
-        // For now, we'll simulate it with localStorage
+      setIsLoading(true);
+      
+      try {
+        // Get real users from Supabase
+        const { data: profilesData, error } = await supabase
+          .from('profiles')
+          .select('*');
         
-        // Get existing users
-        const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        
-        // Create a sample real user if our friends aren't there yet
-        const joyUser: User = {
-          id: "joy-real-user-123", // A UUID-like ID to simulate a real user
-          username: "joy_friend",
-          displayName: "Joy Friend",
-          bio: "I love sharing memes with friends!",
-          avatar: "/assets/avatar3.jpg",
-          isPro: false,
-          createdAt: new Date()
-        };
-        
-        // Check if Joy is already in the users
-        const joyExists = existingUsers.some(u => u.username === "joy_friend");
-        
-        if (!joyExists) {
-          existingUsers.push(joyUser);
-          
-          // Also register this user in the chat system
-          registerUser(joyUser);
+        if (error) {
+          console.error('Error fetching profiles from Supabase:', error);
+          setSuggestedUsers([]);
+          setIsLoading(false);
+          return;
         }
         
-        // Remove all bot accounts (simple IDs like "user1")
-        const realUsers = existingUsers.filter(u => 
-          u.id !== user?.id && 
-          (u.id.includes('-') || u.id.startsWith('joy-')) // Only keep real user IDs
-        );
-        
-        // Save updated users
-        localStorage.setItem('users', JSON.stringify(existingUsers));
-        
-        return realUsers;
-      };
-      
-      const realUsers = await fetchRealUsers();
-      setSuggestedUsers(realUsers);
-      
-      // Set random users as online
-      if (realUsers.length > 0) {
-        setOnlineUsers([realUsers[0].id]);
+        // Filter out current user and convert Supabase profiles to User objects
+        if (profilesData && profilesData.length > 0) {
+          const realUsers = profilesData
+            .filter((profile: any) => profile.id !== user?.id)
+            .map((profile: any) => ({
+              id: profile.id,
+              username: profile.username || 'user',
+              displayName: profile.username || 'User',
+              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+              createdAt: new Date(profile.updated_at || new Date()),
+              bio: profile.bio || '',
+              isPro: profile.is_pro || false
+            }));
+          
+          setSuggestedUsers(realUsers);
+          
+          // Set random users as online
+          if (realUsers.length > 0) {
+            setOnlineUsers([realUsers[0].id]);
+          }
+        } else {
+          setSuggestedUsers([]);
+        }
+      } catch (error) {
+        console.error('Error in loadUsers:', error);
+        setSuggestedUsers([]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
-    loadUsers();
+    if (user) {
+      loadUsers();
+    }
     
     // Set up a fake "real-time" system to update online users
     const interval = setInterval(() => {
@@ -97,9 +94,9 @@ const MergePage: React.FC = () => {
         
         if (isOnline && !onlineUsers.includes(randomUserId)) {
           setOnlineUsers(prev => [...prev, randomUserId]);
-          const user = suggestedUsers.find(u => u.id === randomUserId);
-          if (user) {
-            toast(`${user.displayName || user.username} is now online!`, {
+          const userObj = suggestedUsers.find(u => u.id === randomUserId);
+          if (userObj) {
+            toast(`${userObj.displayName || userObj.username} is now online!`, {
               icon: "🟢",
             });
           }
@@ -108,7 +105,7 @@ const MergePage: React.FC = () => {
     }, 45000); // Every 45 seconds
     
     return () => clearInterval(interval);
-  }, [user, registerUser]);
+  }, [user, suggestedUsers.length]);
   
   const currentUser = suggestedUsers[currentIndex];
   
@@ -388,13 +385,13 @@ const MergePage: React.FC = () => {
               <h2 className="text-xl font-semibold text-yellow-500">Online Friends</h2>
               <div className="mt-2">
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-yellow-500/50" />
                   <Input
                     placeholder="Search friends..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-gray-800 border-gray-700 text-yellow-500 pl-8 placeholder:text-yellow-500/50"
                   />
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-yellow-500/50" />
                 </div>
               </div>
             </CardHeader>

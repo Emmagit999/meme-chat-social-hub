@@ -10,79 +10,63 @@ import { Link, useNavigate } from "react-router-dom";
 import { Search, MessageCircle, UserPlus } from "lucide-react";
 import { User } from "@/types";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const SearchPage: React.FC = () => {
   const { user } = useAuth();
-  const { getSuggestedUsers, startNewChat } = useChat();
+  const { startNewChat } = useChat();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const fetchUsers = () => {
-      const suggestedUsers = getSuggestedUsers();
+    const fetchUsers = async () => {
+      setIsLoading(true);
       
-      // Add some real-like mock users if there aren't many
-      if (suggestedUsers.length < 5) {
-        const mockUsers: User[] = [
-          {
-            id: "user1",
-            username: "meme_lover",
-            displayName: "Meme Lover",
-            bio: "I live for the dankest memes",
-            avatar: "/assets/avatar1.jpg",
-            isPro: false,
-            createdAt: new Date()
-          },
-          {
-            id: "user2",
-            username: "joke_master",
-            displayName: "Joke Master",
-            bio: "Making people laugh since 2010",
-            avatar: "/assets/avatar2.jpg",
-            isPro: true,
-            createdAt: new Date()
-          },
-          {
-            id: "user3",
-            username: "gif_guru",
-            displayName: "GIF Guru",
-            bio: "A GIF says more than a thousand words",
-            avatar: "/assets/avatar3.jpg",
-            isPro: false,
-            createdAt: new Date()
-          },
-          {
-            id: "user4",
-            username: "comedy_king",
-            displayName: "Comedy King",
-            bio: "Life's too short not to laugh",
-            avatar: "/assets/avatar2.jpg",
-            isPro: true,
-            createdAt: new Date()
-          }
-        ];
+      try {
+        // Get real users from Supabase
+        const { data: profilesData, error } = await supabase
+          .from('profiles')
+          .select('*');
         
-        // Combine real and mock users without duplicates
-        const combinedUsers = [...suggestedUsers];
-        
-        for (const mockUser of mockUsers) {
-          if (!combinedUsers.some(u => u.id === mockUser.id)) {
-            combinedUsers.push(mockUser);
-          }
+        if (error) {
+          console.error('Error fetching profiles from Supabase:', error);
+          setAllUsers([]);
+          setIsLoading(false);
+          return;
         }
         
-        setAllUsers(combinedUsers);
-      } else {
-        setAllUsers(suggestedUsers);
+        if (profilesData && profilesData.length > 0) {
+          // Convert Supabase profiles to User objects and filter out current user
+          const realUsers = profilesData
+            .filter((profile: any) => profile.id !== user?.id)
+            .map((profile: any) => ({
+              id: profile.id,
+              username: profile.username || 'user',
+              displayName: profile.username || 'User',
+              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+              createdAt: new Date(profile.updated_at || new Date()),
+              bio: profile.bio || '',
+              isPro: profile.is_pro || false
+            }));
+          
+          setAllUsers(realUsers);
+        } else {
+          setAllUsers([]);
+        }
+      } catch (error) {
+        console.error('Error in fetchUsers:', error);
+        setAllUsers([]);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
     
-    fetchUsers();
-  }, [getSuggestedUsers]);
+    if (user) {
+      fetchUsers();
+    }
+  }, [user]);
   
   const filteredUsers = searchQuery.trim() ? 
     allUsers.filter(u => 
@@ -115,12 +99,15 @@ const SearchPage: React.FC = () => {
       <h1 className="text-2xl font-bold mb-6 text-yellow-500">Search Users</h1>
       
       <div className="flex gap-2 mb-6">
-        <Input
-          placeholder="Search for users..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="border-yellow-200 focus:border-yellow-400"
-        />
+        <div className="relative w-full">
+          <Input
+            placeholder="Search for users..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="border-yellow-200 focus:border-yellow-400 pl-10"
+          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        </div>
         <Button className="bg-memeGreen hover:bg-memeGreen/90">
           <Search className="h-5 w-5" />
         </Button>
@@ -175,7 +162,11 @@ const SearchPage: React.FC = () => {
           ))
         ) : (
           <div className="col-span-full text-center py-8">
-            <p className="text-muted-foreground">No users found matching "{searchQuery}"</p>
+            {searchQuery ? (
+              <p className="text-muted-foreground">No users found matching "{searchQuery}"</p>
+            ) : (
+              <p className="text-muted-foreground">No other users found in the system</p>
+            )}
           </div>
         )}
       </div>
