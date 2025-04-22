@@ -45,11 +45,26 @@ const ChatPage: React.FC = () => {
     getUserById
   } = useChat();
   const messageEndRef = useRef<HTMLDivElement>(null);
-  const suggestedUsers = getSuggestedUsers();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [showChatList, setShowChatList] = useState(!isMobile || !activeChat);
   const [searchQuery, setSearchQuery] = useState("");
+  const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  
+  useEffect(() => {
+    // Fetch suggested users when component mounts
+    const fetchSuggestedUsers = async () => {
+      try {
+        const users = await getSuggestedUsers();
+        setSuggestedUsers(users);
+      } catch (error) {
+        console.error('Error fetching suggested users:', error);
+        setSuggestedUsers([]);
+      }
+    };
+    
+    fetchSuggestedUsers();
+  }, [getSuggestedUsers]);
   
   useEffect(() => {
     // Scroll to bottom when messages change
