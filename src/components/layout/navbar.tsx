@@ -12,57 +12,21 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { useNotifications } from '@/hooks/use-notifications';
+import { useChat } from '@/hooks/use-chat';
 
 export const Navbar = () => {
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
   const { user, logout } = useAuth();
   const isMobile = useIsMobile();
-  
-  const getNotifications = () => {
-    const stored = localStorage.getItem('notifications');
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return [
-      {
-        id: 1,
-        type: 'message',
-        from: 'joke_master',
-        avatar: '/assets/avatar2.jpg',
-        content: 'Hey, check out my new meme!',
-        time: '10m ago',
-        read: false
-      },
-      {
-        id: 2,
-        type: 'like',
-        from: 'meme_lover',
-        avatar: '/assets/avatar1.jpg',
-        content: 'liked your post about programming memes',
-        time: '1h ago',
-        read: true
-      }
-    ];
-  };
-  
-  const [notifications, setNotifications] = useState(getNotifications());
-  
-  const unreadCount = notifications.filter(n => !n.read).length;
-  
-  const markAsRead = (id) => {
-    const updated = notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    );
-    setNotifications(updated);
-    localStorage.setItem('notifications', JSON.stringify(updated));
-  };
-  
-  const clearNotifications = () => {
-    setNotifications([]);
-    localStorage.setItem('notifications', JSON.stringify([]));
-    toast.success('All notifications cleared');
-  };
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    clearNotifications 
+  } = useNotifications();
+  const { activeChat } = useChat();
   
   const getUserAvatar = () => {
     if (user && user.avatar) {
@@ -85,7 +49,7 @@ export const Navbar = () => {
     { name: 'Home', path: '/home', icon: <Home className="h-5 w-5" /> },
     { name: 'Merge', path: '/merge', icon: <Github className="h-5 w-5" /> },
     { name: 'Pals', path: '/pals', icon: <UserPlus className="h-5 w-5" /> },
-    { name: 'Chat', path: '/chat', icon: <MessageSquare className="h-5 w-5" /> },
+    { name: 'Chat', path: '/chat', icon: <MessageSquare className="h-5 w-5" />, badge: activeChat ? true : false },
     { name: 'Search', path: '/search', icon: <Search className="h-5 w-5" /> },
     { name: 'Profile', path: '/profile', icon: <User className="h-5 w-5" /> },
   ];
@@ -109,12 +73,15 @@ export const Navbar = () => {
               <Link key={item.path} to={item.path}>
                 <Button
                   variant={location.pathname === item.path ? "secondary" : "ghost"}
-                  className="w-full justify-start py-6 text-base"
+                  className="w-full justify-start py-6 text-base relative"
                 >
                   {item.icon}
                   <span className="ml-3">{item.name}</span>
                   {location.pathname === item.path && (
                     <span className="ml-auto h-2 w-2 rounded-full bg-yellow-500"></span>
+                  )}
+                  {item.badge && (
+                    <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-red-500"></span>
                   )}
                 </Button>
               </Link>
@@ -147,7 +114,7 @@ export const Navbar = () => {
             <Button
               variant="ghost"
               size="icon"
-              className={`flex flex-col items-center gap-1 h-14 w-14 rounded-full ${
+              className={`flex flex-col items-center gap-1 h-14 w-14 rounded-full relative ${
                 location.pathname === item.path 
                   ? "bg-yellow-500/20 text-yellow-500" 
                   : "text-gray-400"
@@ -155,6 +122,9 @@ export const Navbar = () => {
             >
               {item.icon}
               <span className="text-xs">{item.name}</span>
+              {item.name === 'Chat' && activeChat && (
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-yellow-500"></span>
+              )}
             </Button>
           </Link>
         ))}
@@ -196,10 +166,13 @@ export const Navbar = () => {
                   <Button
                     variant={location.pathname === item.path ? "secondary" : "ghost"}
                     size="sm"
-                    className="text-base"
+                    className="text-base relative"
                   >
                     {item.icon}
                     <span className="ml-1">{item.name}</span>
+                    {item.badge && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-yellow-500"></span>
+                    )}
                   </Button>
                 </Link>
               ))}

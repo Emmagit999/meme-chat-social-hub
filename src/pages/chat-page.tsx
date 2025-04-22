@@ -96,7 +96,7 @@ const ChatPage: React.FC = () => {
   
   if (!user) return null;
   
-  // Fix: Convert AuthUser to User type with the required createdAt property
+  // Convert AuthUser to User type with the required createdAt property
   const currentUser: User = {
     ...user,
     createdAt: new Date(), // Add missing createdAt property
@@ -120,12 +120,8 @@ const ChatPage: React.FC = () => {
       };
     }
     
-    // If user not found in suggested users, use backup method
-    if (otherUserId === "2") {
-      return { name: "Roast Master", id: "2", avatar: "/assets/avatar2.jpg" };
-    } else {
-      return { name: "Meme Lord", id: "1", avatar: "/assets/avatar1.jpg" };
-    }
+    // If user not found in suggested users, return placeholder
+    return { name: "Loading...", id: otherUserId, avatar: "/assets/avatar1.jpg" };
   };
 
   const getOtherUserAvatar = (chatId: string) => {

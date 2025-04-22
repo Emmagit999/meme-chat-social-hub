@@ -7,10 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { useData } from "@/context/data-context";
 import { PostCard } from "@/components/posts/post-card";
-import { Camera, Crown, Edit, LogOut } from "lucide-react";
+import { Camera, Crown, Edit, LogOut, MessageSquare, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarUpload } from "@/components/auth/avatar-upload";
 import { supabase } from "@/integrations/supabase/client";
+import { useChat } from "@/hooks/use-chat";
+import { useNavigate } from "react-router-dom";
+import { User } from "@/types";
 
 // Storage key for avatar in localStorage
 const AVATAR_STORAGE_KEY = 'memechat_user_avatar';
@@ -19,9 +22,13 @@ const BIO_STORAGE_KEY = 'memechat_user_bio';
 const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { posts } = useData();
+  const { getFriends, startNewChat } = useChat();
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState(user?.bio || "");
   const [avatar, setAvatar] = useState<string | undefined>(user?.avatar);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(true);
+  const navigate = useNavigate();
 
   // Load saved avatar from localStorage on mount
   useEffect(() => {
@@ -34,7 +41,22 @@ const ProfilePage: React.FC = () => {
     if (savedBio) {
       setBio(savedBio);
     }
-  }, []);
+    
+    // Load friends
+    const loadFriends = async () => {
+      setIsLoadingFriends(true);
+      try {
+        const friendsList = await getFriends();
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Error loading friends:', error);
+      } finally {
+        setIsLoadingFriends(false);
+      }
+    };
+    
+    loadFriends();
+  }, [getFriends]);
 
   // Add updating avatar (save to profile)
   const handleUploadedAvatar = async (url: string) => {
@@ -56,19 +78,36 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = async () => {
     // Save bio to localStorage
     localStorage.setItem(BIO_STORAGE_KEY, bio);
     
-    // In a real app, save to Supabase
-    // const { error } = await supabase.from("profiles").update({ bio }).eq("id", user?.id);
+    // Save to Supabase
+    if (user) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ bio })
+        .eq("id", user.id);
+      
+      if (error) {
+        toast.error("Profile update failed.");
+      } else {
+        toast.success("Profile updated successfully!");
+      }
+    }
     
-    toast.success("Profile updated!");
     setIsEditing(false);
   };
   
   const handleUpgradeAccount = () => {
     toast("Premium upgrade would be implemented here!");
+  };
+  
+  const handleMessageFriend = async (friendId: string) => {
+    const chatId = await startNewChat(friendId);
+    if (chatId) {
+      navigate('/chat');
+    }
   };
   
   if (!user) return null;
@@ -162,6 +201,7 @@ const ProfilePage: React.FC = () => {
       <Tabs defaultValue="posts">
         <TabsList className="w-full">
           <TabsTrigger value="posts" className="flex-1">My Posts</TabsTrigger>
+          <TabsTrigger value="friends" className="flex-1">Friends</TabsTrigger>
           <TabsTrigger value="liked" className="flex-1">Liked</TabsTrigger>
           <TabsTrigger value="saved" className="flex-1">Saved</TabsTrigger>
         </TabsList>
@@ -176,6 +216,61 @@ const ProfilePage: React.FC = () => {
             <div className="space-y-6">
               {userPosts.map(post => (
                 <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="friends" className="mt-6">
+          {isLoadingFriends ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-pulse text-lg">Loading friends...</div>
+            </div>
+          ) : friends.length === 0 ? (
+            <div className="text-center py-10">
+              <h2 className="text-xl mb-2">No friends yet</h2>
+              <p className="text-muted-foreground mb-4">Go to the Merge page to connect with people!</p>
+              <Button 
+                onClick={() => navigate('/merge')}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+              >
+                Find Friends
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {friends.map(friend => (
+                <Card key={friend.id} className="border-yellow-400">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16 border-2 border-yellow-400">
+                        <AvatarImage src={friend.avatar} alt={friend.username} />
+                        <AvatarFallback className="text-lg">{friend.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-lg">{friend.displayName || friend.username}</h3>
+                        <p className="text-sm text-muted-foreground">@{friend.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
+                        onClick={() => handleMessageFriend(friend.id)}
+                      >
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                        Message
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
+                        onClick={() => navigate(`/profile/${friend.id}`)}
+                      >
+                        View Profile
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
