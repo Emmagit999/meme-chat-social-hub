@@ -27,13 +27,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   return (
-    <div className="p-3 border-b border-gray-200 bg-white flex items-center">
+    <div className="p-3 border-b border-gray-700 bg-black flex items-center">
       {showBackButton && (
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={onBackClick}
-          className="mr-2"
+          className="mr-2 text-yellow-500 hover:text-yellow-400 hover:bg-gray-900"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
@@ -48,9 +48,9 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
             {username.substring(0, 2).toUpperCase()}
           </AvatarFallback>
         </Avatar>
-        <h2 className="font-semibold">{username}</h2>
+        <h2 className="font-semibold text-yellow-500">{username}</h2>
       </div>
-      <Button variant="ghost" size="icon" className="text-gray-500">
+      <Button variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
         <MoreVertical className="h-5 w-5" />
       </Button>
     </div>

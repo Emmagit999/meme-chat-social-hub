@@ -32,16 +32,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       <div
         className={`max-w-[70%] rounded-lg p-3 ${
           isSentByMe
-            ? 'bg-blue-600 text-white'
-            : 'bg-white border border-gray-200'
+            ? 'bg-black text-yellow-500 border border-yellow-500/30'
+            : 'bg-gray-900 text-yellow-400 border border-gray-700'
         }`}
       >
         <p className="whitespace-pre-wrap break-words">{message.content}</p>
         <div
           className={`text-xs mt-1 ${
             isSentByMe
-              ? 'text-white/70 text-right'
-              : 'text-gray-500'
+              ? 'text-yellow-500/70 text-right'
+              : 'text-yellow-500/50'
           }`}
         >
           {format(message.createdAt, 'h:mm a')}

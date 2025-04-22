@@ -9,7 +9,7 @@ interface MessageInputProps {
   onSendMessage: (message: string) => void;
 }
 
-const EMOJI_LIST = ["😀", "😂", "😊", "😍", "🥰", "😎", "🙌", "👍", "❤️", "🔥", "👋", "🎉", "🤔", "😢", "😭", "😡", "🤮", "🤯", "🥳", "😴", "👍", "👏", "🙌"];
+const EMOJI_LIST = ["😀", "😂", "😊", "😍", "🥰", "😎", "🙌", "👍", "❤️", "🔥", "👋", "🎉", "🤔", "😢", "😭", "😡", "🤮", "🤯", "🥳", "😴", "👍", "👏", "🙌", "🤣", "😎", "🙄", "😘", "💯", "🔥", "👀"];
 
 export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   const [messageText, setMessageText] = useState('');
@@ -30,10 +30,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => 
   };
 
   return (
-    <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 flex gap-2 bg-white">
+    <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 bg-black flex gap-2">
       <Popover>
         <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="text-gray-500">
+          <Button type="button" variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
             <Smile className="h-5 w-5" />
           </Button>
         </PopoverTrigger>
@@ -58,12 +58,12 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => 
         placeholder="Send a message"
         value={messageText}
         onChange={(e) => setMessageText(e.target.value)}
-        className="flex-1 border-gray-200 rounded-full"
+        className="flex-1 border-gray-700 bg-gray-900 text-yellow-500 rounded-full placeholder-yellow-500/50"
         autoFocus
       />
       <Button 
         type="submit" 
-        className="bg-blue-600 hover:bg-blue-700 rounded-full h-10 w-10 p-0 flex items-center justify-center"
+        className="bg-yellow-500 hover:bg-yellow-600 text-black rounded-full h-10 w-10 p-0 flex items-center justify-center"
         disabled={!messageText.trim()}
       >
         <Send className="h-5 w-5" />

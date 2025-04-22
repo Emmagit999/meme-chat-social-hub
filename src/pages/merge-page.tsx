@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChat } from "@/hooks/use-chat";
-import { MessageCircle, X, Heart, Shuffle, UserPlus } from "lucide-react";
+import { MessageCircle, X, Heart, Shuffle, UserPlus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth-context";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Input } from "@/components/ui/input";
 
 const MergePage: React.FC = () => {
   const { startNewChat } = useChat();
@@ -22,6 +23,7 @@ const MergePage: React.FC = () => {
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Get online users and people to merge with
   useEffect(() => {
@@ -151,15 +153,31 @@ const MergePage: React.FC = () => {
   
   const handleStartChat = (user: User) => {
     startNewChat(user.id);
+    toast.success(`Started a chat with ${user.displayName || user.username}`);
     navigate("/chat");
   };
+
+  // Filter online users based on search query
+  const filteredOnlineUsers = onlineUsers
+    .map(id => suggestedUsers.find(u => u.id === id))
+    .filter(Boolean) as User[];
+  
+  const searchFilteredUsers = filteredOnlineUsers.filter(user => {
+    if (!searchQuery.trim()) return true;
+    
+    const displayName = user.displayName || '';
+    const username = user.username || '';
+    
+    return displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           username.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   if (isLoading) {
     return (
       <div className="container py-10 text-center">
-        <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
-        <div className="p-10 rounded-lg bg-card border border-border animate-pulse">
-          <p className="mb-4">Loading users...</p>
+        <h1 className="text-2xl font-bold mb-6 text-yellow-500">Merge with Friends</h1>
+        <div className="p-10 rounded-lg bg-gray-900 border border-gray-700 animate-pulse">
+          <p className="mb-4 text-gray-400">Loading users...</p>
         </div>
       </div>
     );
@@ -168,11 +186,11 @@ const MergePage: React.FC = () => {
   if (suggestedUsers.length === 0) {
     return (
       <div className="container py-10 text-center">
-        <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
-        <div className="p-10 rounded-lg bg-card border border-border">
-          <p className="mb-4">No users available right now.</p>
+        <h1 className="text-2xl font-bold mb-6 text-yellow-500">Merge with Friends</h1>
+        <div className="p-10 rounded-lg bg-gray-900 border border-gray-700">
+          <p className="mb-4 text-gray-400">No users available right now.</p>
           <Button
-            className="bg-memeGreen hover:bg-memeGreen/90"
+            className="bg-yellow-500 hover:bg-yellow-600 text-black"
             onClick={() => toast("We'll notify you when new users join!")}
           >
             <Shuffle className="h-5 w-5 mr-2" />
@@ -183,13 +201,9 @@ const MergePage: React.FC = () => {
     );
   }
 
-  const onlineFilteredUsers = suggestedUsers.filter(user => 
-    onlineUsers.includes(user.id)
-  );
-
   return (
     <div className="container py-6 px-4">
-      <h1 className="text-2xl font-bold mb-6">Merge with Memers</h1>
+      <h1 className="text-2xl font-bold mb-6 text-yellow-500">Merge with Friends</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
@@ -201,122 +215,144 @@ const MergePage: React.FC = () => {
                     ? 'translate-x-[-100%] rotate-[-10deg] opacity-0' 
                     : 'translate-x-[100%] rotate-[10deg] opacity-0'
                   : ''
-              }`}
+              } bg-gray-900 border-gray-700`}
             >
               <CardHeader className="text-center pb-0">
                 <div className="mx-auto mb-4">
                   <Avatar className="h-32 w-32">
                     <AvatarImage src={currentUser?.avatar} alt={currentUser?.username} />
-                    <AvatarFallback className="text-4xl">
+                    <AvatarFallback className="text-4xl bg-gray-800 text-yellow-500">
                       {currentUser?.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex items-center justify-center gap-2">
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-xl font-bold text-yellow-500">
                     {currentUser?.displayName || currentUser?.username}
                   </h2>
                   {onlineUsers.includes(currentUser?.id) && (
                     <span className="h-3 w-3 bg-green-500 rounded-full"></span>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground">@{currentUser?.username}</p>
+                <p className="text-sm text-gray-400">@{currentUser?.username}</p>
                 {currentUser?.isPro && (
                   <div className="mt-2">
-                    <span className="px-2 py-1 bg-memeGreen/20 text-memeGreen rounded-full text-xs">
-                      Pro Memer
+                    <span className="px-2 py-1 bg-yellow-500/20 text-yellow-500 rounded-full text-xs">
+                      Pro User
                     </span>
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="text-center py-6">
+              <CardContent className="text-center py-6 text-gray-300">
                 <p>{currentUser?.bio || "No bio yet. Just here for the memes!"}</p>
               </CardContent>
               <CardFooter className="flex justify-center gap-4">
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  className="h-14 w-14 rounded-full border-2 border-destructive" 
+                  className="h-14 w-14 rounded-full border-2 border-red-500 bg-transparent" 
                   onClick={handleSkip}
                 >
-                  <X className="h-6 w-6 text-destructive" />
+                  <X className="h-6 w-6 text-red-500" />
                 </Button>
                 
                 <Button 
                   variant="outline" 
                   size="icon" 
-                  className="h-14 w-14 rounded-full border-2 border-memeGreen" 
+                  className="h-14 w-14 rounded-full border-2 border-yellow-500 bg-transparent" 
                   onClick={handleLike}
                 >
-                  <Heart className="h-6 w-6 text-memeGreen" />
+                  <Heart className="h-6 w-6 text-yellow-500" />
                 </Button>
               </CardFooter>
             </Card>
           </div>
+          
+          <div className="max-w-md mx-auto mt-6 flex justify-center">
+            <Button 
+              className="bg-yellow-500 hover:bg-yellow-600 text-black"
+              onClick={() => {
+                handleStartChat(currentUser);
+                toast.success(`Started a chat with ${currentUser.displayName || currentUser.username}`);
+              }}
+            >
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Message Directly
+            </Button>
+          </div>
         </div>
         
-        {(!isMobile || onlineFilteredUsers.length > 0) && (
-          <div className={`flex-1 ${isMobile ? 'mt-8' : ''}`}>
-            <Card>
-              <CardHeader>
-                <h2 className="text-xl font-semibold">Online Memers</h2>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {onlineFilteredUsers.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-4">
-                      No users online right now
-                    </p>
-                  ) : (
-                    onlineFilteredUsers.map(user => (
-                      <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <Avatar>
-                              <AvatarImage src={user.avatar} alt={user.username} />
-                              <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white" />
-                          </div>
-                          <div>
-                            <h3 className="font-medium">{user.displayName || user.username}</h3>
-                            <p className="text-sm text-muted-foreground">@{user.username}</p>
-                          </div>
+        <div className={`flex-1 ${isMobile ? 'mt-8' : ''}`}>
+          <Card className="bg-gray-900 border-gray-700">
+            <CardHeader>
+              <h2 className="text-xl font-semibold text-yellow-500">Online Friends</h2>
+              <div className="mt-2">
+                <Input
+                  placeholder="Search friends..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-gray-800 border-gray-700 text-yellow-500 placeholder:text-yellow-500/50"
+                  prefix={<Search className="h-4 w-4 text-yellow-500/50 mr-2" />}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {searchFilteredUsers.length === 0 ? (
+                  <p className="text-center text-gray-400 py-4">
+                    {searchQuery ? `No users found matching "${searchQuery}"` : "No users online right now"}
+                  </p>
+                ) : (
+                  searchFilteredUsers.map(user => (
+                    <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-800 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Avatar>
+                            <AvatarImage src={user.avatar} alt={user.username} />
+                            <AvatarFallback className="bg-gray-800 text-yellow-500">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900" />
                         </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => {
-                              // Add to pals
-                              const pals = JSON.parse(localStorage.getItem('pals') || '[]');
-                              if (!pals.some(p => p.id === user.id)) {
-                                pals.push(user);
-                                localStorage.setItem('pals', JSON.stringify(pals));
-                                toast.success(`Added ${user.displayName || user.username} as a pal!`);
-                              } else {
-                                toast.info(`${user.displayName || user.username} is already your pal!`);
-                              }
-                            }}
-                          >
-                            <UserPlus className="h-5 w-5" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => handleStartChat(user)}
-                          >
-                            <MessageCircle className="h-5 w-5" />
-                          </Button>
+                        <div>
+                          <h3 className="font-medium text-yellow-500">{user.displayName || user.username}</h3>
+                          <p className="text-sm text-gray-400">@{user.username}</p>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => {
+                            // Add to pals
+                            const pals = JSON.parse(localStorage.getItem('pals') || '[]');
+                            if (!pals.some(p => p.id === user.id)) {
+                              pals.push(user);
+                              localStorage.setItem('pals', JSON.stringify(pals));
+                              toast.success(`Added ${user.displayName || user.username} as a pal!`);
+                            } else {
+                              toast.info(`${user.displayName || user.username} is already your pal!`);
+                            }
+                          }}
+                          className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-700"
+                        >
+                          <UserPlus className="h-5 w-5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleStartChat(user)}
+                          className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-700"
+                        >
+                          <MessageCircle className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

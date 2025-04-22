@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChat } from "@/hooks/use-chat";
 import { useAuth } from "@/context/auth-context";
-import { MessageCircle, Plus, Search } from "lucide-react";
+import { MessageCircle, Plus, Search, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,17 +13,19 @@ import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { MessageInput } from "@/components/chat/message-input";
 import { User } from '@/types';
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 const EmptyState = () => (
   <div className="h-full flex items-center justify-center flex-col p-4 text-center">
-    <div className="mb-4 p-4 rounded-full bg-gray-100">
-      <MessageCircle className="h-10 w-10 text-blue-500" />
+    <div className="mb-4 p-4 rounded-full bg-gray-800">
+      <MessageCircle className="h-10 w-10 text-yellow-500" />
     </div>
-    <h3 className="text-xl font-medium mb-2">Your messages</h3>
-    <p className="mb-4 text-gray-500">Send private messages to friends and connect with new people</p>
+    <h3 className="text-xl font-medium mb-2 text-yellow-500">Your messages</h3>
+    <p className="mb-4 text-gray-400">Send private messages to friends and connect with new people</p>
     <Button 
       onClick={() => window.location.href = '/merge'}
-      className="bg-blue-600 hover:bg-blue-700"
+      className="bg-yellow-500 hover:bg-yellow-600 text-black"
     >
       Start a conversation
     </Button>
@@ -47,6 +49,7 @@ const ChatPage: React.FC = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [showChatList, setShowChatList] = useState(!isMobile || !activeChat);
+  const [searchQuery, setSearchQuery] = useState("");
   
   useEffect(() => {
     // Scroll to bottom when messages change
@@ -115,26 +118,34 @@ const ChatPage: React.FC = () => {
     return otherUser.avatar;
   };
 
+  // Filter chats based on search query
+  const filteredChats = chats.filter(chat => {
+    if (!searchQuery.trim()) return true;
+    
+    const otherUser = getOtherUser(chat.id);
+    return otherUser.name.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
   return (
     <div className="container py-4 px-0 md:px-4 md:py-6 max-w-full md:max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 h-[calc(100vh-8rem)] overflow-hidden shadow-lg rounded-lg border border-gray-200">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 h-[calc(100vh-8rem)] overflow-hidden shadow-lg rounded-lg border border-gray-700">
         {/* Chat List */}
         {showChatList && (
-          <div className={`${isMobile ? 'col-span-1' : 'md:col-span-1'} bg-white border-r border-gray-200`}>
-            <div className="p-4 border-b border-gray-200 bg-blue-600 text-white">
+          <div className={`${isMobile ? 'col-span-1' : 'md:col-span-1'} bg-gray-900 border-r border-gray-700`}>
+            <div className="p-4 border-b border-gray-700 bg-black text-yellow-500">
               <h2 className="font-semibold flex items-center">
                 <span>{user.displayName || user.username}</span>
                 <div className="ml-auto flex gap-2">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-white"
+                    className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
                     onClick={() => navigate('/search')}
                   >
                     <Search className="h-4 w-4" />
                   </Button>
                   <div 
-                    className="bg-white text-blue-600 h-7 w-7 rounded-full flex items-center justify-center cursor-pointer"
+                    className="bg-yellow-500 text-black h-7 w-7 rounded-full flex items-center justify-center cursor-pointer"
                     onClick={() => navigate('/merge')}
                   >
                     <Plus className="h-4 w-4" />
@@ -143,17 +154,26 @@ const ChatPage: React.FC = () => {
               </h2>
             </div>
             
-            <ScrollArea className="h-[calc(100%-4rem)]">
+            <div className="p-2 border-b border-gray-700">
+              <Input
+                placeholder="Search conversations..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-yellow-500 placeholder:text-yellow-500/50"
+              />
+            </div>
+            
+            <ScrollArea className="h-[calc(100%-8rem)]">
               {isLoading ? (
                 <div className="flex justify-center p-4">
-                  <div className="animate-pulse">Loading...</div>
+                  <div className="animate-pulse text-yellow-500">Loading...</div>
                 </div>
-              ) : chats.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground">
+              ) : filteredChats.length === 0 ? (
+                <div className="p-4 text-center text-gray-400">
                   <p className="mb-2">No conversations yet</p>
                   <p className="text-sm">Start chatting with someone from the Merge page!</p>
                   <Button 
-                    className="mt-4 bg-blue-600 hover:bg-blue-700"
+                    className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-black"
                     onClick={() => navigate('/merge')}
                   >
                     Find people
@@ -161,39 +181,39 @@ const ChatPage: React.FC = () => {
                 </div>
               ) : (
                 <div>
-                  {chats.map(chat => {
+                  {filteredChats.map(chat => {
                     const otherUser = getOtherUser(chat.id);
                     return (
                       <button
                         key={chat.id}
-                        className={`w-full p-3 flex items-center gap-3 hover:bg-gray-100 transition-colors border-b border-gray-100 ${
-                          activeChat === chat.id ? 'bg-blue-50' : ''
+                        className={`w-full p-3 flex items-center gap-3 hover:bg-gray-800 transition-colors border-b border-gray-800 ${
+                          activeChat === chat.id ? 'bg-gray-800' : ''
                         }`}
                         onClick={() => handleChatSelect(chat.id)}
                       >
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={otherUser.avatar} />
-                          <AvatarFallback>
+                          <AvatarFallback className="bg-gray-700 text-yellow-500">
                             {otherUser.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 text-left">
                           <div className="flex justify-between">
-                            <p className="font-medium">{otherUser.name}</p>
+                            <p className="font-medium text-yellow-500">{otherUser.name}</p>
                             {chat.lastMessageDate && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-400">
                                 {format(chat.lastMessageDate, 'h:mm a')}
                               </span>
                             )}
                           </div>
                           {chat.lastMessage && (
-                            <p className="text-sm text-gray-500 truncate">
+                            <p className="text-sm text-gray-400 truncate">
                               {chat.lastMessage}
                             </p>
                           )}
                         </div>
                         {chat.unreadCount > 0 && (
-                          <div className="bg-memeGreen text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          <div className="bg-yellow-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
                             {chat.unreadCount}
                           </div>
                         )}
@@ -203,11 +223,21 @@ const ChatPage: React.FC = () => {
                 </div>
               )}
             </ScrollArea>
+            
+            <div className="p-3 border-t border-gray-700 bg-black">
+              <Button 
+                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-2"
+                onClick={() => navigate('/merge')}
+              >
+                <Users className="h-4 w-4" />
+                Find New Friends
+              </Button>
+            </div>
           </div>
         )}
         
         {/* Chat Messages */}
-        <div className={`${isMobile ? 'col-span-1' : 'md:col-span-2'} flex flex-col bg-gray-50 ${(!isMobile || !showChatList) ? 'block' : 'hidden'}`}>
+        <div className={`${isMobile ? 'col-span-1' : 'md:col-span-2'} flex flex-col bg-gray-900 ${(!isMobile || !showChatList) ? 'block' : 'hidden'}`}>
           {activeChat ? (
             <>
               <ChatHeader 
@@ -218,9 +248,9 @@ const ChatPage: React.FC = () => {
                 showBackButton={isMobile}
               />
               
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea className="flex-1 p-4 bg-gray-900">
                 {messages.length === 0 ? (
-                  <div className="h-full flex items-center justify-center text-muted-foreground">
+                  <div className="h-full flex items-center justify-center text-gray-400">
                     No messages yet. Say hello!
                   </div>
                 ) : (
