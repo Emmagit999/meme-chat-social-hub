@@ -287,13 +287,15 @@ const MergePage: React.FC = () => {
             <CardHeader>
               <h2 className="text-xl font-semibold text-yellow-500">Online Friends</h2>
               <div className="mt-2">
-                <Input
-                  placeholder="Search friends..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-yellow-500 placeholder:text-yellow-500/50"
-                  prefix={<Search className="h-4 w-4 text-yellow-500/50 mr-2" />}
-                />
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-yellow-500/50" />
+                  <Input
+                    placeholder="Search friends..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="bg-gray-800 border-gray-700 text-yellow-500 pl-8 placeholder:text-yellow-500/50"
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
