@@ -4,16 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useChat } from "@/hooks/use-chat";
-import { MessageCircle, X, Heart, Shuffle, UserPlus, Search } from "lucide-react";
+import { MessageCircle, X, Heart, Shuffle, UserPlus, Search, Smile } from "lucide-react";
 import { toast } from "sonner";
 import { User } from "@/types";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/auth-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const MergePage: React.FC = () => {
-  const { startNewChat } = useChat();
+  const { startNewChat, registerUser } = useChat();
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -24,52 +26,62 @@ const MergePage: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [messageText, setMessageText] = useState("");
+  const [showingMessageBox, setShowingMessageBox] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
   // Get online users and people to merge with
   useEffect(() => {
-    const loadUsers = () => {
+    const loadUsers = async () => {
       // In a real app, this would fetch real users from the backend
-      const storedUsers = localStorage.getItem('users');
-      if (storedUsers) {
-        const users = JSON.parse(storedUsers);
-        setSuggestedUsers(users.filter(u => u.id !== user?.id));
-      } else {
-        // Create some initial users if none exist
-        const initialUsers: User[] = [
-          {
-            id: "user1",
-            username: "meme_lover",
-            displayName: "Meme Lover",
-            bio: "I live for the dankest memes",
-            avatar: "/assets/avatar1.jpg",
-            isPro: false,
-            createdAt: new Date()
-          },
-          {
-            id: "user2",
-            username: "joke_master",
-            displayName: "Joke Master",
-            bio: "Making people laugh since 2010",
-            avatar: "/assets/avatar2.jpg",
-            isPro: true,
-            createdAt: new Date()
-          },
-          {
-            id: "user3",
-            username: "gif_guru",
-            displayName: "GIF Guru",
-            bio: "A GIF says more than a thousand words",
-            avatar: "/assets/avatar3.jpg",
-            isPro: false,
-            createdAt: new Date()
-          }
-        ];
-        localStorage.setItem('users', JSON.stringify(initialUsers));
-        setSuggestedUsers(initialUsers);
-      }
+      const fetchRealUsers = async () => {
+        // This is where you would make a Supabase query to get real users
+        // For now, we'll simulate it with localStorage
+        
+        // Get existing users
+        const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        
+        // Create a sample real user if our friends aren't there yet
+        const joyUser: User = {
+          id: "joy-real-user-123", // A UUID-like ID to simulate a real user
+          username: "joy_friend",
+          displayName: "Joy Friend",
+          bio: "I love sharing memes with friends!",
+          avatar: "/assets/avatar3.jpg",
+          isPro: false,
+          createdAt: new Date()
+        };
+        
+        // Check if Joy is already in the users
+        const joyExists = existingUsers.some(u => u.username === "joy_friend");
+        
+        if (!joyExists) {
+          existingUsers.push(joyUser);
+          
+          // Also register this user in the chat system
+          registerUser(joyUser);
+        }
+        
+        // Remove all bot accounts (simple IDs like "user1")
+        const realUsers = existingUsers.filter(u => 
+          u.id !== user?.id && 
+          (u.id.includes('-') || u.id.startsWith('joy-')) // Only keep real user IDs
+        );
+        
+        // Save updated users
+        localStorage.setItem('users', JSON.stringify(existingUsers));
+        
+        return realUsers;
+      };
+      
+      const realUsers = await fetchRealUsers();
+      setSuggestedUsers(realUsers);
       
       // Set random users as online
-      setOnlineUsers(["user1", "user3"]);
+      if (realUsers.length > 0) {
+        setOnlineUsers([realUsers[0].id]);
+      }
+      
       setIsLoading(false);
     };
     
@@ -78,21 +90,25 @@ const MergePage: React.FC = () => {
     // Set up a fake "real-time" system to update online users
     const interval = setInterval(() => {
       // In a real app this would be a websocket connection
-      const user2Status = Math.random() > 0.7;
-      const updatedOnline = ["user1", "user3"];
-      
-      if (user2Status) {
-        updatedOnline.push("user2");
-        toast("Joke Master is now online!", {
-          icon: "🟢",
-        });
+      if (suggestedUsers.length > 1) {
+        const randomUserIndex = Math.floor(Math.random() * suggestedUsers.length);
+        const randomUserId = suggestedUsers[randomUserIndex].id;
+        const isOnline = Math.random() > 0.7;
+        
+        if (isOnline && !onlineUsers.includes(randomUserId)) {
+          setOnlineUsers(prev => [...prev, randomUserId]);
+          const user = suggestedUsers.find(u => u.id === randomUserId);
+          if (user) {
+            toast(`${user.displayName || user.username} is now online!`, {
+              icon: "🟢",
+            });
+          }
+        }
       }
-      
-      setOnlineUsers(updatedOnline);
     }, 45000); // Every 45 seconds
     
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, registerUser]);
   
   const currentUser = suggestedUsers[currentIndex];
   
@@ -132,17 +148,11 @@ const MergePage: React.FC = () => {
       localStorage.setItem('pals', JSON.stringify(pals));
     }
     
-    // Start a chat with this user
-    const chatId = startNewChat(currentUser.id);
-    
-    toast.success(`You've matched with ${currentUser.displayName || currentUser.username}!`);
+    // Open message box to this user
+    setSelectedUser(currentUser);
+    setShowingMessageBox(true);
     
     goToNextUser();
-    
-    // Navigate to chat after a brief delay to let the swipe animation complete
-    setTimeout(() => {
-      navigate(`/chat`);
-    }, 500);
   };
   
   const handleSkip = () => {
@@ -151,10 +161,28 @@ const MergePage: React.FC = () => {
     goToNextUser();
   };
   
-  const handleStartChat = (user: User) => {
-    startNewChat(user.id);
-    toast.success(`Started a chat with ${user.displayName || user.username}`);
-    navigate("/chat");
+  const handleSendMessage = () => {
+    if (!selectedUser || !messageText.trim()) return;
+    
+    // Start a chat and send the message
+    const chatId = startNewChat(selectedUser.id);
+    
+    toast.success(`Started chatting with ${selectedUser.displayName || selectedUser.username}`);
+    
+    // Reset and navigate to chat
+    setMessageText("");
+    setShowingMessageBox(false);
+    setSelectedUser(null);
+    
+    // Navigate to chat after a brief delay to let the animation complete
+    setTimeout(() => {
+      navigate(`/chat`);
+    }, 300);
+  };
+  
+  const handleStartChat = (chatUser: User) => {
+    setSelectedUser(chatUser);
+    setShowingMessageBox(true);
   };
 
   // Filter online users based on search query
@@ -171,6 +199,9 @@ const MergePage: React.FC = () => {
     return displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
            username.toLowerCase().includes(searchQuery.toLowerCase());
   });
+
+  // Chat message emojis
+  const emojis = ["😀", "😂", "❤️", "👍", "🔥", "🎉", "😍", "🤔", "👋", "🙌"];
 
   if (isLoading) {
     return (
@@ -204,6 +235,78 @@ const MergePage: React.FC = () => {
   return (
     <div className="container py-6 px-4">
       <h1 className="text-2xl font-bold mb-6 text-yellow-500">Merge with Friends</h1>
+      
+      {showingMessageBox && selectedUser && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-lg shadow-lg max-w-md w-full p-4 mx-auto">
+            <div className="flex items-center gap-3 mb-4">
+              <Avatar>
+                <AvatarImage src={selectedUser.avatar} alt={selectedUser.username} />
+                <AvatarFallback>{(selectedUser.displayName || selectedUser.username).substring(0, 2).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h3 className="font-bold text-yellow-500">{selectedUser.displayName || selectedUser.username}</h3>
+                <p className="text-sm text-gray-400">@{selectedUser.username}</p>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="ml-auto" 
+                onClick={() => setShowingMessageBox(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            <div className="bg-gray-800 rounded-lg p-3 max-h-32 overflow-auto mb-3">
+              <p className="text-sm text-gray-300">Start your conversation with {selectedUser.displayName || selectedUser.username}</p>
+            </div>
+            
+            <div className="flex items-end gap-2">
+              <div className="relative flex-1">
+                <Textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Type your message..."
+                  className="pr-10 bg-gray-800 border-gray-700 text-white resize-none min-h-[80px]"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="absolute right-2 bottom-2 text-yellow-500 hover:text-yellow-400 hover:bg-transparent"
+                    >
+                      <Smile className="h-5 w-5" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2">
+                    <div className="grid grid-cols-5 gap-2">
+                      {emojis.map(emoji => (
+                        <Button
+                          key={emoji}
+                          variant="ghost"
+                          className="h-8 w-8 text-lg"
+                          onClick={() => setMessageText(prev => prev + emoji)}
+                        >
+                          {emoji}
+                        </Button>
+                      ))}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <Button 
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                onClick={handleSendMessage}
+                disabled={!messageText.trim()}
+              >
+                <MessageCircle className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
@@ -271,10 +374,7 @@ const MergePage: React.FC = () => {
           <div className="max-w-md mx-auto mt-6 flex justify-center">
             <Button 
               className="bg-yellow-500 hover:bg-yellow-600 text-black"
-              onClick={() => {
-                handleStartChat(currentUser);
-                toast.success(`Started a chat with ${currentUser.displayName || currentUser.username}`);
-              }}
+              onClick={() => handleStartChat(currentUser)}
             >
               <MessageCircle className="h-5 w-5 mr-2" />
               Message Directly
