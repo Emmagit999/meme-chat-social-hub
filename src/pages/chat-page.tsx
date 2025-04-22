@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { MessageInput } from "@/components/chat/message-input";
+import { User } from '@/types';
 
 const EmptyState = () => (
   <div className="h-full flex items-center justify-center flex-col p-4 text-center">
@@ -76,6 +77,13 @@ const ChatPage: React.FC = () => {
   };
   
   if (!user) return null;
+  
+  // Fix: Convert AuthUser to User type with the required createdAt property
+  const currentUser: User = {
+    ...user,
+    createdAt: new Date(), // Add missing createdAt property
+    username: user.username || 'user',
+  };
   
   // Find the other user in the active chat
   const getOtherUser = (chatId: string) => {
@@ -221,7 +229,7 @@ const ChatPage: React.FC = () => {
                       <ChatMessage
                         key={message.id}
                         message={message}
-                        currentUser={user}
+                        currentUser={currentUser}
                         otherUserAvatar={getOtherUserAvatar(activeChat)}
                       />
                     ))}
