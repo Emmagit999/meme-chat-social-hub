@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
@@ -51,6 +50,11 @@ export const usePosts = () => {
     }
 
     try {
+      const validType: 'meme' | 'roast' | 'joke' = 
+        (postData.type === 'meme' || postData.type === 'roast' || postData.type === 'joke') 
+          ? postData.type 
+          : 'meme';
+
       const { data, error } = await supabase
         .from('posts')
         .insert({
@@ -60,7 +64,7 @@ export const usePosts = () => {
           content: postData.content,
           image: postData.image,
           video: postData.video,
-          type: postData.type
+          type: validType
         })
         .select()
         .single();
@@ -79,7 +83,7 @@ export const usePosts = () => {
           likes: 0,
           comments: 0,
           createdAt: new Date(data.created_at),
-          type: data.type
+          type: data.type as 'meme' | 'roast' | 'joke'
         };
 
         setPosts(prev => [newPost, ...prev]);
@@ -98,7 +102,6 @@ export const usePosts = () => {
     }
 
     try {
-      // Optimistic update
       setPosts(prev => 
         prev.map(post => 
           post.id === postId 
@@ -107,7 +110,6 @@ export const usePosts = () => {
         )
       );
 
-      // Update in database
       const { error } = await supabase
         .from('posts')
         .update({ likes: posts.find(p => p.id === postId)?.likes + 1 })
@@ -115,7 +117,6 @@ export const usePosts = () => {
 
       if (error) throw error;
 
-      // Add to post_likes table
       await supabase
         .from('post_likes')
         .insert({
@@ -126,7 +127,6 @@ export const usePosts = () => {
       console.error('Error liking post:', error);
       toast.error("Failed to like post");
       
-      // Revert optimistic update
       setPosts(prev => 
         prev.map(post => 
           post.id === postId 

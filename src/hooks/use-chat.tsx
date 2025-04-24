@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { Message, Chat, User } from '@/types';
@@ -644,7 +643,7 @@ export const useChat = () => {
         .select('*')
         .eq('id', userId)
         .single();
-      
+    
       if (error || !data) {
         throw error;
       }
@@ -655,7 +654,7 @@ export const useChat = () => {
         displayName: data.username || 'User',
         avatar: data.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
         createdAt: new Date(data.updated_at || new Date()),
-        bio: data.bio || '',
+        bio: '', // Default empty string for bio since it's not in the profile table yet
         isPro: false
       };
       

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +14,6 @@ import { useChat } from "@/hooks/use-chat";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/types";
 
-// Storage key for avatar in localStorage
 const AVATAR_STORAGE_KEY = 'memechat_user_avatar';
 const BIO_STORAGE_KEY = 'memechat_user_bio';
 
@@ -30,7 +28,6 @@ const ProfilePage: React.FC = () => {
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const navigate = useNavigate();
 
-  // Load saved avatar from localStorage on mount
   useEffect(() => {
     const savedAvatar = localStorage.getItem(AVATAR_STORAGE_KEY);
     if (savedAvatar) {
@@ -42,7 +39,6 @@ const ProfilePage: React.FC = () => {
       setBio(savedBio);
     }
     
-    // Load friends
     const loadFriends = async () => {
       setIsLoadingFriends(true);
       try {
@@ -58,14 +54,11 @@ const ProfilePage: React.FC = () => {
     loadFriends();
   }, [getFriends]);
 
-  // Add updating avatar (save to profile)
   const handleUploadedAvatar = async (url: string) => {
     setAvatar(url);
     
-    // Save to localStorage to persist across refreshes
     localStorage.setItem(AVATAR_STORAGE_KEY, url);
     
-    // Here, also call Supabase to update their profile!
     const { error } = await supabase
       .from("profiles")
       .update({ avatar_url: url })
@@ -79,18 +72,20 @@ const ProfilePage: React.FC = () => {
   };
 
   const handleUpdateProfile = async () => {
-    // Save bio to localStorage
     localStorage.setItem(BIO_STORAGE_KEY, bio);
     
-    // Save to Supabase
     if (user) {
       const { error } = await supabase
         .from("profiles")
-        .update({ bio })
+        .update({ 
+          avatar_url: avatar,
+          username: user.username
+        })
         .eq("id", user.id);
       
       if (error) {
         toast.error("Profile update failed.");
+        console.error("Profile update error:", error);
       } else {
         toast.success("Profile updated successfully!");
       }
