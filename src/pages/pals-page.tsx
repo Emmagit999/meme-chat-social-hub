@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useChat } from "@/hooks/use-chat";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client"; // Fixed import path
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
