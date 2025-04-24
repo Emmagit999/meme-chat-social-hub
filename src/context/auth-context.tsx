@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
@@ -42,6 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (data.session) {
           console.log("Active session found:", data.session.user.id);
+          
+          // Check if email is verified before setting user as authenticated
+          const isEmailVerified = data.session.user.email_confirmed_at || 
+                                 data.session.user.app_metadata?.provider !== 'email' || 
+                                 data.session.user.app_metadata?.email_verified;
+          
+          if (!isEmailVerified) {
+            console.log("User email not verified");
+            toast.error("Please verify your email before continuing");
+            await supabase.auth.signOut();
+            setSession({ user: null, isLoading: false, isAuthenticated: false });
+            return;
+          }
+          
           setSession({
             user: {
               id: data.session.user.id,
@@ -74,6 +87,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Auth state changed:", event, currentSession?.user?.id);
       
       if (currentSession) {
+        // Check if email is verified for email provider
+        const isEmailVerified = currentSession.user.email_confirmed_at || 
+                               currentSession.user.app_metadata?.provider !== 'email' ||
+                               currentSession.user.app_metadata?.email_verified;
+                               
+        if (!isEmailVerified && event !== 'SIGNED_OUT') {
+          console.log("User email not verified in auth change");
+          toast.error("Please verify your email before continuing");
+          await supabase.auth.signOut();
+          setSession({ user: null, isLoading: false, isAuthenticated: false });
+          return;
+        }
+        
         setSession({
           user: {
             id: currentSession.user.id,
@@ -108,6 +134,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
       
+      // Check if email is verified for email logins
+      if (!data.user.email_confirmed_at) {
+        toast.error("Please verify your email before signing in");
+        await supabase.auth.signOut();
+        return null;
+      }
+      
       console.log("Sign in successful:", data?.user?.id);
       toast.success('Successfully signed in!');
       return data;
@@ -128,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data: {
             username,
           },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
       
@@ -139,7 +173,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("Sign up successful:", data?.user?.id);
       toast.success('Successfully signed up! Please check your email for verification.');
-      return data;
+      
+      // Since we want email verification, sign out the user
+      await supabase.auth.signOut();
+      setSession({ user: null, isLoading: false, isAuthenticated: false });
+      return null;
     } catch (error) {
       console.error("Sign up exception:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to sign up');
@@ -194,7 +232,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Updated login function with better handling
+  // Updated login function with better handling and email verification check
   const login = (userData: AuthUser, session: any) => {
     console.log("Manual login called with userData:", userData);
     

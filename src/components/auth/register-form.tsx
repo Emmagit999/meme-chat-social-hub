@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/auth-context";
+import { toast } from "sonner";
 
 export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
   const [username, setUsername] = useState('');
@@ -12,21 +13,44 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
     
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      return;
+    }
+    
+    if (!username || username.length < 3) {
+      setError('Username must be at least 3 characters long');
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      await register(username, email, password);
+      const result = await register(username, email, password);
+      
+      if (result === null) {
+        // Registration successful but needs email verification
+        setSuccess('Registration successful! Please check your email to verify your account before logging in.');
+        toast.success('Check your email for verification link');
+        // Clear the form
+        setUsername('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+      }
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
@@ -54,6 +78,7 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            minLength={3}
           />
         </div>
         
@@ -78,6 +103,7 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={6}
           />
         </div>
         
@@ -95,6 +121,10 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
         
         {error && (
           <div className="text-red-500 text-sm">{error}</div>
+        )}
+        
+        {success && (
+          <div className="text-green-500 text-sm">{success}</div>
         )}
         
         <Button type="submit" className="w-full bg-memeGreen hover:bg-memeGreen/90" disabled={isLoading}>
