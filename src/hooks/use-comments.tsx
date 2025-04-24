@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Comment, CommentReply } from "@/types";
 import { toast } from "sonner";
@@ -15,33 +15,39 @@ export const useComments = () => {
       try {
         const { data, error } = await supabase
           .from('comments')
-          .select(`
-            *,
-            comment_replies(*)
-          `);
+          .select('*, comment_replies(*)')
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        setComments(data?.map(comment => ({
-          id: comment.id,
-          postId: comment.post_id,
-          userId: comment.user_id,
-          username: comment.username,
-          userAvatar: comment.user_avatar,
-          content: comment.content,
-          likes: comment.likes,
-          createdAt: new Date(comment.created_at),
-          replies: comment.comment_replies?.map((reply: any) => ({
-            id: reply.id,
-            commentId: reply.comment_id,
-            userId: reply.user_id,
-            username: reply.username,
-            userAvatar: reply.user_avatar,
-            content: reply.content,
-            likes: reply.likes,
-            createdAt: new Date(reply.created_at)
-          })) || []
-        })) || []);
+        if (data) {
+          const formattedComments: Comment[] = data.map(comment => {
+            const replies = comment.comment_replies ? comment.comment_replies.map((reply: any) => ({
+              id: reply.id,
+              commentId: reply.comment_id,
+              userId: reply.user_id,
+              username: reply.username,
+              userAvatar: reply.user_avatar,
+              content: reply.content,
+              likes: reply.likes || 0,
+              createdAt: new Date(reply.created_at)
+            })) : [];
+
+            return {
+              id: comment.id,
+              postId: comment.post_id,
+              userId: comment.user_id,
+              username: comment.username,
+              userAvatar: comment.user_avatar,
+              content: comment.content,
+              likes: comment.likes || 0,
+              replies: replies,
+              createdAt: new Date(comment.created_at)
+            };
+          });
+
+          setComments(formattedComments);
+        }
       } catch (error) {
         console.error('Error loading comments:', error);
         toast.error('Failed to load comments');
@@ -53,7 +59,7 @@ export const useComments = () => {
     loadComments();
   }, []);
 
-  const addComment = async (commentData: Omit<Comment, 'id' | 'likes' | 'createdAt' | 'replies'>) => {
+  const addComment = useCallback(async (comment: Omit<Comment, 'id' | 'likes' | 'createdAt' | 'replies'>) => {
     if (!user) {
       toast.error("You must be logged in to comment");
       return;
@@ -63,11 +69,11 @@ export const useComments = () => {
       const { data, error } = await supabase
         .from('comments')
         .insert({
-          post_id: commentData.postId,
-          user_id: commentData.userId,
-          username: commentData.username,
-          user_avatar: commentData.userAvatar,
-          content: commentData.content
+          user_id: comment.userId,
+          post_id: comment.postId,
+          username: comment.username,
+          user_avatar: comment.userAvatar,
+          content: comment.content
         })
         .select()
         .single();
@@ -83,28 +89,31 @@ export const useComments = () => {
           userAvatar: data.user_avatar,
           content: data.content,
           likes: 0,
-          createdAt: new Date(data.created_at),
-          replies: []
+          replies: [],
+          createdAt: new Date(data.created_at)
         };
 
-        setComments(prev => [...prev, newComment]);
+        setComments(prev => [newComment, ...prev]);
+        
+        // Update post comments count
+        await supabase
+          .from('posts')
+          .update({ comments: supabase.rpc('increment', { x: 1 }) })
+          .eq('id', comment.postId);
+          
         toast.success("Comment added!");
       }
     } catch (error) {
       console.error('Error adding comment:', error);
-      toast.error("Failed to add comment");
+      toast.error('Failed to add comment');
     }
-  };
+  }, [user]);
 
-  const likeComment = async (commentId: string) => {
+  const likeComment = useCallback(async (commentId: string) => {
     if (!user) {
       toast.error("You must be logged in to like a comment");
       return;
     }
-
-    // Find the comment to like
-    const commentToLike = comments.find(c => c.id === commentId);
-    if (!commentToLike) return;
 
     try {
       // Optimistic update
@@ -119,23 +128,19 @@ export const useComments = () => {
       // Update in database
       const { error } = await supabase
         .from('comments')
-        .update({ likes: commentToLike.likes + 1 })
+        .update({ likes: comments.find(c => c.id === commentId)?.likes + 1 })
         .eq('id', commentId);
 
       if (error) throw error;
 
-      // Add to comment_likes table
+      // Record the like
       await supabase
         .from('comment_likes')
         .insert({
           user_id: user.id,
           comment_id: commentId
         });
-        
     } catch (error) {
-      console.error('Error liking comment:', error);
-      toast.error("Failed to like comment");
-      
       // Revert optimistic update on error
       setComments(prev => 
         prev.map(comment => 
@@ -144,12 +149,14 @@ export const useComments = () => {
             : comment
         )
       );
+      console.error('Error liking comment:', error);
+      toast.error('Failed to like comment');
     }
-  };
+  }, [user, comments]);
 
-  const addCommentReply = async (commentId: string, replyData: Omit<CommentReply, 'id' | 'likes' | 'createdAt'>) => {
+  const addCommentReply = useCallback(async (commentId: string, reply: Omit<CommentReply, 'id' | 'likes' | 'createdAt'>) => {
     if (!user) {
-      toast.error("You must be logged in to reply to a comment");
+      toast.error("You must be logged in to reply");
       return;
     }
 
@@ -158,10 +165,10 @@ export const useComments = () => {
         .from('comment_replies')
         .insert({
           comment_id: commentId,
-          user_id: replyData.userId,
-          username: replyData.username,
-          user_avatar: replyData.userAvatar,
-          content: replyData.content
+          user_id: reply.userId,
+          username: reply.username,
+          user_avatar: reply.userAvatar,
+          content: reply.content
         })
         .select()
         .single();
@@ -180,94 +187,90 @@ export const useComments = () => {
           createdAt: new Date(data.created_at)
         };
 
-        // Add reply to the correct comment
-        setComments(prev => prev.map(comment => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              replies: [...(comment.replies || []), newReply]
-            };
-          }
-          return comment;
-        }));
-
+        setComments(prev => 
+          prev.map(comment => 
+            comment.id === commentId
+              ? { ...comment, replies: [...comment.replies, newReply] }
+              : comment
+          )
+        );
+        
         toast.success("Reply added!");
       }
     } catch (error) {
-      console.error('Error adding reply:', error);
-      toast.error("Failed to add reply");
+      console.error('Error adding comment reply:', error);
+      toast.error('Failed to add reply');
     }
-  };
+  }, [user]);
 
-  const likeCommentReply = async (commentId: string, replyId: string) => {
+  const likeCommentReply = useCallback(async (commentId: string, replyId: string) => {
     if (!user) {
       toast.error("You must be logged in to like a reply");
       return;
     }
 
-    // Find the comment and reply to like
-    const commentWithReply = comments.find(c => c.id === commentId);
-    if (!commentWithReply) return;
-    
-    const replyToLike = commentWithReply.replies?.find(r => r.id === replyId);
-    if (!replyToLike) return;
-
     try {
+      // Find the comment and reply
+      const comment = comments.find(c => c.id === commentId);
+      const reply = comment?.replies.find(r => r.id === replyId);
+      
+      if (!comment || !reply) return;
+
       // Optimistic update
       setComments(prev => 
-        prev.map(comment => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              replies: comment.replies?.map(reply =>
-                reply.id === replyId
-                  ? { ...reply, likes: reply.likes + 1 }
-                  : reply
-              )
-            };
-          }
-          return comment;
-        })
+        prev.map(c => 
+          c.id === commentId 
+            ? {
+                ...c,
+                replies: c.replies.map(r => 
+                  r.id === replyId 
+                    ? { ...r, likes: r.likes + 1 } 
+                    : r
+                )
+              } 
+            : c
+        )
       );
 
       // Update in database
       const { error } = await supabase
         .from('comment_replies')
-        .update({ likes: replyToLike.likes + 1 })
+        .update({ likes: reply.likes + 1 })
         .eq('id', replyId);
 
       if (error) throw error;
 
-      // Add to reply_likes table
+      // Record the like
       await supabase
         .from('reply_likes')
         .insert({
           user_id: user.id,
           reply_id: replyId
         });
-        
     } catch (error) {
-      console.error('Error liking reply:', error);
-      toast.error("Failed to like reply");
-      
       // Revert optimistic update on error
       setComments(prev => 
-        prev.map(comment => {
-          if (comment.id === commentId) {
-            return {
-              ...comment,
-              replies: comment.replies?.map(reply =>
-                reply.id === replyId
-                  ? { ...reply, likes: reply.likes - 1 }
-                  : reply
-              )
-            };
-          }
-          return comment;
-        })
+        prev.map(c => 
+          c.id === commentId 
+            ? {
+                ...c,
+                replies: c.replies.map(r => 
+                  r.id === replyId 
+                    ? { ...r, likes: r.likes - 1 } 
+                    : r
+                )
+              } 
+            : c
+        )
       );
+      console.error('Error liking reply:', error);
+      toast.error('Failed to like reply');
     }
-  };
+  }, [user, comments]);
+
+  const getPostComments = useCallback((postId: string): Comment[] => {
+    return comments.filter(comment => comment.postId === postId);
+  }, [comments]);
 
   return {
     comments,
@@ -276,6 +279,6 @@ export const useComments = () => {
     likeComment,
     addCommentReply,
     likeCommentReply,
-    getPostComments: (postId: string) => comments.filter(comment => comment.postId === postId)
+    getPostComments
   };
 };

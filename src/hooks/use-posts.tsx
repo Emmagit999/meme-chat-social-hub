@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
@@ -50,6 +51,7 @@ export const usePosts = () => {
     }
 
     try {
+      // Ensure type is one of the valid options
       const validType: 'meme' | 'roast' | 'joke' = 
         (postData.type === 'meme' || postData.type === 'roast' || postData.type === 'joke') 
           ? postData.type 

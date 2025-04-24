@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/auth-context';
-import { Message, Chat, User } from '@/types';
-import { toast } from "sonner";
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/auth-context";
+import { User, Message, Chat } from "@/types";
+import { toast } from "sonner";
+import { v4 as uuidv4 } from 'uuid';
 
-// Storage keys for localStorage - we'll use these as fallback only
 const CHATS_STORAGE_KEY = 'memechat_chats';
 const MESSAGES_STORAGE_KEY = 'memechat_messages';
 const USERS_STORAGE_KEY = 'memechat_users';
@@ -18,12 +18,10 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
 
-  // Load data on initial render
   useEffect(() => {
     if (user) {
       const loadData = async () => {
         try {
-          // Try to fetch users from Supabase
           const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
             .select('*');
@@ -34,7 +32,6 @@ export const useChat = () => {
             return;
           }
           
-          // Convert Supabase profiles to User objects
           if (profilesData && profilesData.length > 0) {
             const realUsers = profilesData.map((profile: any) => ({
               id: profile.id,
@@ -48,10 +45,8 @@ export const useChat = () => {
             
             setUsers(realUsers);
             
-            // Fetch chats from Supabase
             fetchChatsFromSupabase(realUsers);
           } else {
-            // No profiles found, fall back to localStorage
             fallbackToLocalStorage();
           }
         } catch (error) {
@@ -64,7 +59,6 @@ export const useChat = () => {
       
       loadData();
       
-      // Set up real-time listener for new messages
       const messagesChannel = supabase
         .channel('public:messages')
         .on('postgres_changes', { 
@@ -86,10 +80,8 @@ export const useChat = () => {
             
             setMessages(prevMessages => [...prevMessages, formattedMessage]);
             
-            // Update chat with last message
             updateChatWithLastMessage(formattedMessage);
             
-            // Show notification if message is for current user and not from them
             if (newMessage.receiver_id === user.id && newMessage.sender_id !== user.id) {
               const sender = users.find(u => u.id === newMessage.sender_id);
               toast(`New message from ${sender?.displayName || sender?.username || 'Someone'}`);
@@ -104,12 +96,10 @@ export const useChat = () => {
     }
   }, [user]);
   
-  // Function to fetch chats from Supabase
   const fetchChatsFromSupabase = async (usersList: User[]) => {
     if (!user) return;
     
     try {
-      // First try to get chats from Supabase
       const { data: chatsData, error: chatsError } = await supabase
         .from('chats')
         .select('*')
@@ -122,7 +112,6 @@ export const useChat = () => {
       }
       
       if (chatsData && chatsData.length > 0) {
-        // Convert Supabase chats to Chat objects
         const formattedChats = chatsData.map((chat: any) => {
           const otherParticipantId = chat.participant1 === user.id ? chat.participant2 : chat.participant1;
           return {
@@ -136,10 +125,8 @@ export const useChat = () => {
         
         setChats(formattedChats);
         
-        // Now fetch messages for all chats
         fetchMessagesFromSupabase(formattedChats);
       } else {
-        // No chats found, fall back to localStorage
         loadChatsAndMessagesFromLocalStorage(usersList);
       }
     } catch (error) {
@@ -148,12 +135,10 @@ export const useChat = () => {
     }
   };
   
-  // Function to fetch messages from Supabase
   const fetchMessagesFromSupabase = async (chatsList: Chat[]) => {
     if (!user || chatsList.length === 0) return;
     
     try {
-      // Fetch messages for current user
       const { data: messagesData, error: messagesError } = await supabase
         .from('messages')
         .select('*')
@@ -165,34 +150,28 @@ export const useChat = () => {
         return;
       }
       
-      if (messagesData && messagesData.length > 0) {
-        // Convert Supabase messages to Message objects
-        const formattedMessages = messagesData.map((message: any) => ({
-          id: message.id,
-          senderId: message.sender_id,
-          receiverId: message.receiver_id,
-          content: message.content,
-          read: message.read || false,
-          createdAt: new Date(message.created_at)
-        }));
-        
-        setMessages(formattedMessages);
-      }
+      const formattedMessages = messagesData.map((message: any) => ({
+        id: message.id,
+        senderId: message.sender_id,
+        receiverId: message.receiver_id,
+        content: message.content,
+        read: message.read || false,
+        createdAt: new Date(message.created_at)
+      }));
+      
+      setMessages(formattedMessages);
     } catch (error) {
       console.error('Error fetching messages from Supabase:', error);
     }
   };
 
-  // Fallback to localStorage if Supabase fails
   const fallbackToLocalStorage = () => {
     console.log('Falling back to localStorage for user data');
     
-    // Load users - only real users, no bots
     const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
     if (savedUsers) {
       try {
         const parsedUsers = JSON.parse(savedUsers);
-        // Convert string dates back to Date objects and filter out bot accounts
         const formattedUsers = parsedUsers
           .map((u: any) => ({
             ...u,
@@ -210,24 +189,19 @@ export const useChat = () => {
       setUsers([]);
     }
     
-    // Load chats and messages
     loadChatsAndMessagesFromLocalStorage(users);
   };
 
-  // Load chats and messages from localStorage
   const loadChatsAndMessagesFromLocalStorage = (usersList: User[]) => {
-    // Load chats - only chats with real users
     const savedChats = localStorage.getItem(CHATS_STORAGE_KEY);
     if (savedChats && user) {
       try {
         const parsedChats = JSON.parse(savedChats);
-        // Convert string dates back to Date objects
         const formattedChats = parsedChats.map((chat: any) => ({
           ...chat,
           lastMessageDate: chat.lastMessageDate ? new Date(chat.lastMessageDate) : undefined
         }));
         
-        // Filter chats for current user and only real users
         const userChats = formattedChats.filter((chat: Chat) => 
           chat.participants.includes(user.id) && 
           chat.participants.every(isRealUser)
@@ -243,12 +217,10 @@ export const useChat = () => {
       setChats([]);
     }
     
-    // Load messages - only messages with real users
     const savedMessages = localStorage.getItem(MESSAGES_STORAGE_KEY);
     if (savedMessages) {
       try {
         const parsedMessages = JSON.parse(savedMessages);
-        // Convert string dates back to Date objects and filter out bot messages
         const formattedMessages = parsedMessages
           .map((message: any) => ({
             ...message,
@@ -267,7 +239,6 @@ export const useChat = () => {
     }
   };
 
-  // Update chat with last message
   const updateChatWithLastMessage = (message: Message) => {
     setChats(prevChats => {
       const existingChat = prevChats.find(c => 
@@ -276,7 +247,6 @@ export const useChat = () => {
       );
       
       if (existingChat) {
-        // Update existing chat
         return prevChats.map(c => 
           c.id === existingChat.id 
             ? { 
@@ -290,7 +260,6 @@ export const useChat = () => {
             : c
         );
       } else {
-        // Create new chat
         const newChatId = Date.now().toString();
         const newChat: Chat = {
           id: newChatId,
@@ -305,7 +274,6 @@ export const useChat = () => {
     });
   };
 
-  // Update localStorage whenever the data changes
   useEffect(() => {
     if (!isLoading && user) {
       localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
@@ -324,23 +292,18 @@ export const useChat = () => {
     }
   }, [users, isLoading, user]);
 
-  // When active chat changes, load the messages for that chat
   useEffect(() => {
     if (activeChat) {
-      // In a real app, this would be a server request
       const chatMessages = messages.filter(message => {
         const chat = chats.find(c => c.id === activeChat);
         if (!chat) return false;
         
-        // A message belongs to this chat if both the sender and receiver
-        // are participants in the chat
         return chat.participants.includes(message.senderId) && 
                chat.participants.includes(message.receiverId);
       });
       
       setFilteredMessages(chatMessages);
       
-      // Mark all unread messages as read
       if (user) {
         const unreadMessages = messages.filter(msg => 
           msg.receiverId === user.id && 
@@ -349,7 +312,6 @@ export const useChat = () => {
         );
         
         if (unreadMessages.length > 0) {
-          // Mark messages as read in state
           setMessages(prevMessages => 
             prevMessages.map(msg => 
               unreadMessages.some(unread => unread.id === msg.id)
@@ -358,7 +320,6 @@ export const useChat = () => {
             )
           );
           
-          // Update read status in Supabase
           unreadMessages.forEach(async (msg) => {
             try {
               await supabase
@@ -370,7 +331,6 @@ export const useChat = () => {
             }
           });
           
-          // Update unread count in chat
           setChats(prevChats => 
             prevChats.map(chat => 
               chat.id === activeChat 
@@ -397,7 +357,6 @@ export const useChat = () => {
     const receiver = chat.participants.find(id => id !== user.id);
     if (!receiver) return;
 
-    // Create new message
     const newMessage: Message = {
       id: Date.now().toString(),
       senderId: user.id,
@@ -407,7 +366,6 @@ export const useChat = () => {
       createdAt: new Date()
     };
 
-    // Save message to Supabase
     try {
       const { data, error } = await supabase
         .from('messages')
@@ -425,10 +383,8 @@ export const useChat = () => {
         throw error;
       }
       
-      // If message was saved successfully, the real-time channel will handle adding it to the UI
       toast.success("Message sent");
       
-      // Also update the chat record in Supabase
       const chatToUpdate = chats.find(c => 
         c.participants.includes(user.id) && 
         c.participants.includes(receiver)
@@ -443,7 +399,6 @@ export const useChat = () => {
           })
           .eq('id', chatToUpdate.id);
       } else {
-        // Create new chat if it doesn't exist
         await supabase
           .from('chats')
           .insert({
@@ -459,89 +414,106 @@ export const useChat = () => {
       console.error('Error sending message:', error);
       toast.error("Failed to send message");
       
-      // Fall back to local state if Supabase fails
       setMessages(prev => [...prev, newMessage]);
       
       updateChatWithLastMessage(newMessage);
     }
   };
 
-  // Helper to check if a user is a real user (not a bot account)
   const isRealUser = (userId: string) => {
-    // Real users have IDs that are UUIDs from Supabase auth
-    // Bot accounts have simple string IDs like "user1", "user2"
     return userId.includes('-') || userId === user?.id;
   };
 
-  const startNewChat = async (userId: string) => {
+  const startNewChat = useCallback(async (userId: string) => {
     if (!user) {
       toast.error("You must be logged in to start a chat");
-      return;
+      return null;
     }
-
-    if (userId === user.id) {
-      toast.error("You cannot chat with yourself");
-      return;
-    }
-
-    // Check if chat already exists
-    const existingChat = chats.find(chat => 
-      chat.participants.includes(user.id) && 
-      chat.participants.includes(userId)
-    );
-
-    if (existingChat) {
-      setActiveChat(existingChat.id);
-      return existingChat.id;
-    }
-
-    // Create new chat
-    const newChatId = Date.now().toString();
-    const newChat: Chat = {
-      id: newChatId,
-      participants: [user.id, userId],
-      unreadCount: 0
-    };
 
     try {
-      // Save chat to Supabase
+      const { data: existingChats } = await supabase
+        .from('chats')
+        .select('*')
+        .or(`and(participant1.eq.${user.id},participant2.eq.${userId}),and(participant1.eq.${userId},participant2.eq.${user.id})`)
+        .limit(1);
+
+      if (existingChats && existingChats.length > 0) {
+        setActiveChat(existingChats[0].id);
+        return existingChats[0].id;
+      }
+
+      const newChatId = uuidv4();
       const { data, error } = await supabase
         .from('chats')
         .insert({
           id: newChatId,
           participant1: user.id,
           participant2: userId,
+          created_at: new Date().toISOString(),
           unread_count: 0
         })
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-      
-      setChats(prev => [...prev, newChat]);
-      setActiveChat(newChatId);
-      toast.success("Chat started");
-      
-      return newChatId;
-    } catch (error) {
-      console.error('Error creating chat:', error);
-      toast.error("Failed to start chat");
-      
-      // Fallback to local state
-      setChats(prev => [...prev, newChat]);
-      setActiveChat(newChatId);
-      
-      return newChatId;
-    }
-  };
+        .select()
+        .single();
 
-  // Function to get user suggestions - only real users from Supabase
+      if (error) {
+        console.error("Error creating chat:", error);
+        toast.error("Failed to create chat");
+        return null;
+      }
+
+      const newChat: Chat = {
+        id: data.id,
+        participants: [data.participant1, data.participant2],
+        lastMessage: null,
+        lastMessageDate: null,
+        unreadCount: 0
+      };
+
+      setChats(prev => [...prev, newChat]);
+      setActiveChat(newChat.id);
+      
+      return newChat.id;
+    } catch (error) {
+      console.error("Error in startNewChat:", error);
+      toast.error("Failed to start chat");
+      return null;
+    }
+  }, [user, setActiveChat, setChats]);
+
+  const getUserById = useCallback(async (userId: string): Promise<User | null> => {
+    if (!userId) return null;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      
+      if (data) {
+        return {
+          id: data.id,
+          username: data.username || 'user',
+          displayName: data.username || 'User',
+          avatar: data.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+          isPro: false,
+          bio: '',
+          createdAt: new Date(data.updated_at || new Date())
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user by ID:', error);
+      return null;
+    }
+  }, []);
+
   const getSuggestedUsers = async (): Promise<User[]> => {
     if (!user) return [];
     
     try {
-      // Get real users from Supabase
       const { data: profilesData, error } = await supabase
         .from('profiles')
         .select('*')
@@ -552,7 +524,6 @@ export const useChat = () => {
         return [];
       }
       
-      // Convert Supabase profiles to User objects
       if (profilesData && profilesData.length > 0) {
         return profilesData.map((profile: any) => ({
           id: profile.id,
@@ -565,12 +536,10 @@ export const useChat = () => {
         }));
       }
       
-      // Fallback to localStorage if no Supabase profiles found
       const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
       if (storedUsers) {
         try {
           const parsedUsers = JSON.parse(storedUsers);
-          // Convert string dates back to Date objects and filter out bot accounts and current user
           return parsedUsers
             .map((u: any) => ({
               ...u,
@@ -589,29 +558,23 @@ export const useChat = () => {
     }
   };
 
-  // Function to register a new real user in the chat system
   const registerUser = async (newUser: User) => {
     if (!newUser.id || !newUser.username) {
       console.error("Invalid user data");
       return;
     }
     
-    // Check if user already exists
     const existingUser = users.find(u => u.id === newUser.id);
     if (existingUser) {
-      // User already exists, don't add again
       return;
     }
     
-    // Add new user to local state
     const updatedUsers = [...users, newUser];
     setUsers(updatedUsers);
     
-    // Add to localStorage as backup
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers));
     
     try {
-      // Update user profile in Supabase
       const { error } = await supabase
         .from('profiles')
         .upsert({
@@ -630,56 +593,10 @@ export const useChat = () => {
     }
   };
 
-  // Function to get user by ID
-  const getUserById = async (userId: string): Promise<User | undefined> => {
-    // First check local state
-    const localUser = users.find(u => u.id === userId);
-    if (localUser) return localUser;
-    
-    // If not found, try to fetch from Supabase
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-    
-      if (error || !data) {
-        throw error;
-      }
-      
-      const user: User = {
-        id: data.id,
-        username: data.username || 'user',
-        displayName: data.username || 'User',
-        avatar: data.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-        createdAt: new Date(data.updated_at || new Date()),
-        bio: '', // Default empty string for bio since it's not in the profile table yet
-        isPro: false
-      };
-      
-      // Update local state
-      setUsers(prevUsers => {
-        if (prevUsers.some(u => u.id === user.id)) {
-          return prevUsers.map(u => u.id === user.id ? user : u);
-        } else {
-          return [...prevUsers, user];
-        }
-      });
-      
-      return user;
-    } catch (error) {
-      console.error('Error fetching user by ID:', error);
-      return undefined;
-    }
-  };
-
-  // Function to get all friends for a user
   const getFriends = async (): Promise<User[]> => {
     if (!user) return [];
     
     try {
-      // Get friends from Supabase
       const { data: friendsData, error } = await supabase
         .from('friends')
         .select('friend_id')
@@ -693,7 +610,6 @@ export const useChat = () => {
         return [];
       }
       
-      // Get friend user details
       const friendIds = friendsData.map(f => f.friend_id);
       const friendUsers: User[] = [];
       
