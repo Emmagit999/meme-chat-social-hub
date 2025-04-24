@@ -26,25 +26,42 @@ const PalsPage: React.FC = () => {
       
       setIsLoading(true);
       try {
+        // First, fetch friends IDs
         const { data: friendsData, error: friendsError } = await supabase
           .from('friends')
-          .select('friend_id, profiles!friends_friend_id_fkey(id, username, avatar_url, bio, is_pro)')
+          .select('friend_id')
           .eq('user_id', user.id);
 
         if (friendsError) throw friendsError;
-
-        if (friendsData) {
-          const formattedPals: User[] = friendsData.map(friend => ({
-            id: friend.profiles.id,
-            username: friend.profiles.username || 'user',
-            displayName: friend.profiles.username || 'User',
-            avatar: friend.profiles.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-            createdAt: new Date(),
-            bio: friend.profiles.bio || '',
-            isPro: friend.profiles.is_pro || false
-          }));
+        
+        if (friendsData && friendsData.length > 0) {
+          // Extract friend IDs
+          const friendIds = friendsData.map(friend => friend.friend_id);
           
-          setPals(formattedPals);
+          // Now fetch the profile data for those friends
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', friendIds);
+            
+          if (profilesError) throw profilesError;
+          
+          if (profilesData) {
+            const formattedPals: User[] = profilesData.map(profile => ({
+              id: profile.id,
+              username: profile.username || 'user',
+              displayName: profile.username || 'User',
+              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+              createdAt: new Date(profile.updated_at || new Date()),
+              bio: profile.bio || '',
+              isPro: profile.is_pro || false
+            }));
+            
+            setPals(formattedPals);
+          }
+        } else {
+          // No friends found
+          setPals([]);
         }
       } catch (error) {
         console.error('Error fetching pals:', error);

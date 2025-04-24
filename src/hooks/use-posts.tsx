@@ -15,7 +15,7 @@ export const usePosts = () => {
       try {
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
-          .select('*, profiles:user_id(username, avatar_url)')
+          .select('*')
           .order('created_at', { ascending: false });
 
         if (postsError) throw postsError;
@@ -23,8 +23,9 @@ export const usePosts = () => {
         setPosts(postsData?.map(post => ({
           id: post.id,
           userId: post.user_id,
-          username: post.profiles?.username || post.username,
-          userAvatar: post.profiles?.avatar_url || post.user_avatar,
+          // Access username and avatar directly from post columns instead of trying to access profiles
+          username: post.username || 'anonymous',
+          userAvatar: post.user_avatar || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
           content: post.content,
           image: post.image,
           video: post.video,
