@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Comment, CommentReply } from "@/types";
@@ -95,13 +94,16 @@ export const useComments = () => {
 
         setComments(prev => [newComment, ...prev]);
         
-        // Update post comments count
-        await supabase
+        const { error: updateError } = await supabase
           .from('posts')
-          .update({ comments: supabase.rpc('increment', { x: 1 }) })
+          .update({ comments: supabase.rpc('increment') })
           .eq('id', comment.postId);
           
-        toast.success("Comment added!");
+        if (updateError) {
+          console.error('Error updating post comment count:', updateError);
+        } else {
+          toast.success("Comment added!");
+        }
       }
     } catch (error) {
       console.error('Error adding comment:', error);

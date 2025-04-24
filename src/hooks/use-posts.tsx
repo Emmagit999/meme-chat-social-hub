@@ -13,23 +13,23 @@ export const usePosts = () => {
   useEffect(() => {
     const loadPosts = async () => {
       try {
-        const { data, error } = await supabase
+        const { data: postsData, error: postsError } = await supabase
           .from('posts')
-          .select('*')
+          .select('*, profiles:user_id(username, avatar_url)')
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (postsError) throw postsError;
 
-        setPosts(data?.map(post => ({
+        setPosts(postsData?.map(post => ({
           id: post.id,
           userId: post.user_id,
-          username: post.username,
-          userAvatar: post.user_avatar,
+          username: post.profiles?.username || post.username,
+          userAvatar: post.profiles?.avatar_url || post.user_avatar,
           content: post.content,
           image: post.image,
           video: post.video,
-          likes: post.likes,
-          comments: post.comments,
+          likes: post.likes || 0,
+          comments: post.comments || 0,
           createdAt: new Date(post.created_at),
           type: post.type as 'meme' | 'roast' | 'joke'
         })) || []);

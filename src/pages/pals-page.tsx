@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useChat } from "@/hooks/use-chat";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/lib/supabase";
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
@@ -19,49 +19,43 @@ const PalsPage: React.FC = () => {
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Load pals from localStorage or fetch from backend
   useEffect(() => {
-    const fetchPals = () => {
-      // In a real app, this would be a backend call
-      const storedPals = localStorage.getItem('pals');
-      if (storedPals) {
-        setPals(JSON.parse(storedPals));
-      } else {
-        // Create some initial pals if none exist yet
-        const initialPals: User[] = [
-          {
-            id: "user1",
-            username: "meme_lover",
-            displayName: "Meme Lover",
-            bio: "I live for the dankest memes",
-            avatar: "/assets/avatar1.jpg",
-            isPro: false,
-            createdAt: new Date()
-          },
-          {
-            id: "user2",
-            username: "joke_master",
-            displayName: "Joke Master",
-            bio: "Making people laugh since 2010",
-            avatar: "/assets/avatar2.jpg",
-            isPro: true,
-            createdAt: new Date()
-          }
-        ];
-        localStorage.setItem('pals', JSON.stringify(initialPals));
-        setPals(initialPals);
-      }
+    const fetchPals = async () => {
+      if (!user) return;
       
-      // Simulate some online users
-      setOnlineUsers(["user1"]);
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        const { data: friendsData, error: friendsError } = await supabase
+          .from('friends')
+          .select('friend_id, profiles!friends_friend_id_fkey(id, username, avatar_url, bio, is_pro)')
+          .eq('user_id', user.id);
+
+        if (friendsError) throw friendsError;
+
+        if (friendsData) {
+          const formattedPals: User[] = friendsData.map(friend => ({
+            id: friend.profiles.id,
+            username: friend.profiles.username || 'user',
+            displayName: friend.profiles.username || 'User',
+            avatar: friend.profiles.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+            createdAt: new Date(),
+            bio: friend.profiles.bio || '',
+            isPro: friend.profiles.is_pro || false
+          }));
+          
+          setPals(formattedPals);
+        }
+      } catch (error) {
+        console.error('Error fetching pals:', error);
+        toast.error('Failed to load pals');
+      } finally {
+        setIsLoading(false);
+      }
     };
-    
+
     fetchPals();
     
-    // Set up a simulated "real-time" system to update online status
     const onlineInterval = setInterval(() => {
-      // In a real app, this would be a websocket connection
       const randomStatus = Math.random() > 0.5;
       if (randomStatus && !onlineUsers.includes("user2")) {
         setOnlineUsers(prev => [...prev, "user2"]);
@@ -74,12 +68,11 @@ const PalsPage: React.FC = () => {
     }, 30000); // Every 30 seconds
     
     return () => clearInterval(onlineInterval);
-  }, []);
+  }, [user]);
   
   const handleRemovePal = (palId: string) => {
     const updatedPals = pals.filter(pal => pal.id !== palId);
     setPals(updatedPals);
-    localStorage.setItem('pals', JSON.stringify(updatedPals));
     toast.success("Pal removed successfully");
   };
   
