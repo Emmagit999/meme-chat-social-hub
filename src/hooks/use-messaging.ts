@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { User, Message, Chat } from "@/types";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
+import { RealtimeChannel } from '@supabase/supabase-js';
 
 export const useMessaging = () => {
   const { user } = useAuth();
@@ -17,7 +18,7 @@ export const useMessaging = () => {
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   
-  const channelRef = useRef<any>(null);
+  const channelRef = useRef<RealtimeChannel | null>(null);
   
   const [isConnected, setIsConnected] = useState(true);
   const reconnectTimer = useRef<any>(null);
@@ -125,16 +126,17 @@ export const useMessaging = () => {
         reconnectTimer.current = setTimeout(() => {
           setReconnectAttempt(prev => prev + 1);
         }, 3000);
-      })
-      .subscribe((status, err, payload) => {
-        if (status === 'SUBSCRIBED') {
-          setIsConnected(true);
-          console.log('Realtime subscription active');
-        } else if (status === 'CHANNEL_ERROR') {
-          setIsConnected(false);
-          console.error('Realtime subscription failed', err, payload);
-        }
       });
+    
+    messagesChannel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        setIsConnected(true);
+        console.log('Realtime subscription active');
+      } else if (status === 'CHANNEL_ERROR') {
+        setIsConnected(false);
+        console.error('Realtime subscription failed');
+      }
+    });
     
     channelRef.current = messagesChannel;
   }, [user]);
