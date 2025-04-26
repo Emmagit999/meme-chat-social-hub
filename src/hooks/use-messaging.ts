@@ -16,14 +16,11 @@ export const useMessaging = () => {
   const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
   
-  // Track subscription for cleanup and reconnection
   const channelRef = useRef<any>(null);
   
-  // Connection status tracking
   const [isConnected, setIsConnected] = useState(true);
   const reconnectTimer = useRef<any>(null);
 
-  // Setup real-time connection and fetch initial data
   useEffect(() => {
     if (!user) return;
     
@@ -34,12 +31,9 @@ export const useMessaging = () => {
         await fetchUsers();
         await fetchChats();
         
-        // Initial data load complete
         setIsLoading(false);
         
-        // Setup real-time subscription
         setupRealtimeSubscription();
-        
       } catch (error) {
         console.error('Error in loadData:', error);
         setIsLoading(false);
@@ -49,15 +43,12 @@ export const useMessaging = () => {
     
     loadData();
     
-    // Cleanup function
     return () => {
       cleanupRealtimeSubscription();
     };
   }, [user, reconnectAttempt]);
   
-  // Handle reconnection on network changes
   useEffect(() => {
-    // Listen for online/offline events
     const handleOnline = () => {
       setIsConnected(true);
       if (reconnectTimer.current) {
@@ -65,7 +56,6 @@ export const useMessaging = () => {
         reconnectTimer.current = null;
       }
       
-      // Trigger reconnection
       setReconnectAttempt(prev => prev + 1);
       toast.success("Connection restored");
     };
@@ -74,7 +64,6 @@ export const useMessaging = () => {
       setIsConnected(false);
       toast.error("Connection lost. Attempting to reconnect...");
       
-      // Set reconnect timer
       if (reconnectTimer.current) {
         clearTimeout(reconnectTimer.current);
       }
@@ -98,14 +87,11 @@ export const useMessaging = () => {
     };
   }, [isConnected]);
 
-  // Setup real-time message subscription
   const setupRealtimeSubscription = useCallback(() => {
     if (!user) return;
     
-    // Clean up any existing subscription
     cleanupRealtimeSubscription();
     
-    // Create new subscription - Fix: Added a third parameter for the subscription config
     const messagesChannel = supabase
       .channel('public:messages', {
         config: {
@@ -131,7 +117,6 @@ export const useMessaging = () => {
         console.error('Realtime subscription error:', error);
         setIsConnected(false);
         
-        // Schedule reconnection
         if (reconnectTimer.current) {
           clearTimeout(reconnectTimer.current);
         }
@@ -152,16 +137,14 @@ export const useMessaging = () => {
     
     channelRef.current = messagesChannel;
   }, [user]);
-  
-  // Clean up real-time subscription
+
   const cleanupRealtimeSubscription = useCallback(() => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
   }, []);
-  
-  // Handle a new message from real-time subscription
+
   const handleNewMessage = useCallback((newMessage: any) => {
     if (!user) return;
     
@@ -176,7 +159,6 @@ export const useMessaging = () => {
       };
       
       setMessages(prevMessages => {
-        // Avoid duplicates
         if (prevMessages.some(m => m.id === formattedMessage.id)) {
           return prevMessages;
         }
@@ -191,8 +173,7 @@ export const useMessaging = () => {
       }
     }
   }, [user, users]);
-  
-  // Handle a message update from real-time subscription
+
   const handleMessageUpdate = useCallback((updatedMessage: any) => {
     if (!user) return;
     
@@ -208,8 +189,7 @@ export const useMessaging = () => {
       )
     );
   }, [user]);
-  
-  // Fetch users from Supabase
+
   const fetchUsers = async () => {
     if (!user) return;
     
@@ -241,8 +221,7 @@ export const useMessaging = () => {
       throw error;
     }
   };
-  
-  // Fetch chats from Supabase
+
   const fetchChats = async () => {
     if (!user) return;
     
@@ -277,8 +256,7 @@ export const useMessaging = () => {
       throw error;
     }
   };
-  
-  // Fetch messages from Supabase
+
   const fetchMessages = async () => {
     if (!user) return;
     
@@ -310,7 +288,6 @@ export const useMessaging = () => {
     }
   };
 
-  // Update chat with last message
   const updateChatWithLastMessage = useCallback((message: Message) => {
     setChats(prevChats => {
       const existingChat = prevChats.find(c => 
@@ -346,7 +323,6 @@ export const useMessaging = () => {
     });
   }, [user?.id]);
 
-  // Filter messages when active chat changes
   useEffect(() => {
     if (activeChat) {
       const chatMessages = messages.filter(message => {
@@ -400,7 +376,6 @@ export const useMessaging = () => {
     }
   }, [activeChat, messages, chats, user]);
 
-  // Send message function with optimistic UI updates and error handling
   const sendMessage = async (content: string) => {
     if (!user || !activeChat || !content.trim()) {
       if (!content.trim()) {
@@ -427,15 +402,12 @@ export const useMessaging = () => {
       createdAt: new Date()
     };
 
-    // Show sending state
     setIsSending(true);
 
     try {
-      // Optimistically update UI
       setMessages(prev => [...prev, newMessage]);
       updateChatWithLastMessage(newMessage);
       
-      // Actual API call
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -481,7 +453,6 @@ export const useMessaging = () => {
       console.error('Error sending message:', error);
       toast.error("Failed to send message. Retrying...");
       
-      // Retry once after a short delay
       setTimeout(async () => {
         try {
           const { error: retryError } = await supabase
@@ -504,10 +475,8 @@ export const useMessaging = () => {
           console.error('Error sending message (retry):', retryErr);
           toast.error("Failed to send message. Please try again later.");
           
-          // Remove the optimistic message from the UI
           setMessages(prev => prev.filter(m => m.id !== newMessage.id));
           
-          // Revert chat last message if needed
           const originalChat = chats.find(c => c.id === activeChat);
           if (originalChat) {
             setChats(prev => 
@@ -523,7 +492,6 @@ export const useMessaging = () => {
     }
   };
 
-  // Start a new chat with a user
   const startNewChat = useCallback(async (userId: string) => {
     if (!user) {
       toast.error("You must be logged in to start a chat");
@@ -580,11 +548,9 @@ export const useMessaging = () => {
     }
   }, [user, setActiveChat]);
 
-  // Get user by ID
   const getUserById = useCallback(async (userId: string): Promise<User | null> => {
     if (!userId) return null;
     
-    // First check in already loaded users
     const cachedUser = users.find(u => u.id === userId);
     if (cachedUser) return cachedUser;
     
@@ -608,7 +574,6 @@ export const useMessaging = () => {
           createdAt: new Date(data.updated_at || new Date())
         };
         
-        // Add to users cache
         setUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser]);
         
         return newUser;
@@ -620,7 +585,6 @@ export const useMessaging = () => {
     }
   }, [users]);
 
-  // Get suggested users for new chats
   const getSuggestedUsers = async (): Promise<User[]> => {
     if (!user) return [];
     
@@ -654,7 +618,6 @@ export const useMessaging = () => {
     }
   };
 
-  // Register a new user in the messaging system
   const registerUser = async (newUser: User) => {
     if (!newUser.id || !newUser.username) {
       console.error("Invalid user data");
@@ -666,7 +629,6 @@ export const useMessaging = () => {
       return;
     }
     
-    // Add to local state
     setUsers(prevUsers => [...prevUsers, newUser]);
     
     try {
@@ -688,7 +650,6 @@ export const useMessaging = () => {
     }
   };
 
-  // Get friend list
   const getFriends = async (): Promise<User[]> => {
     if (!user) return [];
     
