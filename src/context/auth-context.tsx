@@ -165,6 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         options: {
           data: { username },
+          // Remove the 'filter' property which is causing the error
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
       
