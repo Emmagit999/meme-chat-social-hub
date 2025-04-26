@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
@@ -14,7 +13,6 @@ interface AuthContextType extends AuthSession {
   signUpWithEmail: (email: string, password: string, username: string) => Promise<AuthData | null>;
   signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
-  // Adding aliases to match component usage - adding explicit parameters to match usage
   login: (userData: AuthUser, session: any) => void;
   register: (username: string, email: string, password: string) => Promise<AuthData | null>;
   logout: () => Promise<void>;
@@ -158,28 +156,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting to sign up with email:", email);
       
-      // First check if email already exists - this is causing the TypeScript error
-      // We'll check differently since admin API requires special permissions
-      const { data, error: checkError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { username },
-          // Remove the 'filter' property which is causing the error
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
+      // First check if user already exists
+      const { data: existingUsers } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', email)
+        .maybeSingle();
       
-      // If the user already exists, Supabase will return identityData
-      if (data?.user?.identities && data.user.identities.length === 0) {
+      if (existingUsers) {
         toast.error("Email already registered");
         throw new Error("Email already registered. Please use a different email or log in.");
       }
       
-      if (checkError) {
-        console.error("Sign up check error:", checkError.message);
-        toast.error(checkError.message || 'Failed to sign up');
-        throw checkError;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username },
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) {
+        console.error("Sign up error:", error.message);
+        toast.error(error.message || 'Failed to sign up');
+        throw error;
+      }
+      
+      // If the user already exists, Supabase will return identities
+      if (data?.user?.identities && data.user.identities.length === 0) {
+        toast.error("Email already registered");
+        throw new Error("Email already registered. Please use a different email or log in.");
       }
       
       if (!data.user) {
@@ -254,7 +261,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Add password reset functionality
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -276,7 +282,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Updated login function with better handling and email verification check
   const login = (userData: AuthUser, session: any) => {
     console.log("Manual login called with userData:", userData);
     
@@ -299,7 +304,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log("Login successful, auth state updated");
   };
 
-  // Create alias functions to match component usage
   const register = async (username: string, email: string, password: string) => {
     try {
       return await signUpWithEmail(email, password, username);
@@ -319,7 +323,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signUpWithEmail,
         signInWithGoogle,
         signOut,
-        // Add aliases to match component usage
         login,
         register,
         logout,

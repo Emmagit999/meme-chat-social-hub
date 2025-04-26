@@ -17,6 +17,7 @@ import SplashScreen from "@/components/ui/splash-screen";
 import PalsPage from "@/pages/pals-page";
 import { useAuth } from "@/context/auth-context";
 import Index from "@/pages/Index";
+import ResetPassword from "@/pages/reset-password";
 
 // Create an AuthCheck component that uses the auth context
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
@@ -55,6 +56,14 @@ const AppRoutes = () => {
           <Route 
             path="/auth" 
             element={!isAuthenticated ? <AuthPage /> : <Navigate to="/home" />} 
+          />
+          <Route 
+            path="/auth/reset-password" 
+            element={<ResetPassword />} 
+          />
+          <Route 
+            path="/auth/callback" 
+            element={<AuthPage />} 
           />
           <Route 
             path="/home" 
