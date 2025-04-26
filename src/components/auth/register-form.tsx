@@ -21,6 +21,7 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
     setError('');
     setSuccess('');
     
+    // Form validation
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -45,17 +46,29 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
         // Registration successful but needs email verification
         setSuccess('Registration successful! Please check your email to verify your account before logging in.');
         toast.success('Check your email for verification link');
+        
         // Clear the form
         setUsername('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+      } else if (result && result.user) {
+        // If email verification is not required (which shouldn't happen with our settings)
+        setSuccess('Account created successfully!');
+        toast.success('Account created!');
+      } else {
+        // Unexpected result
+        setError('Registration failed: Invalid response from server');
+        toast.error('Registration failed');
       }
     } catch (error) {
+      console.error('Registration error:', error);
       if (error instanceof Error) {
         setError(error.message);
+        toast.error(error.message);
       } else {
-        setError('Registration failed');
+        setError('Registration failed. Please try again.');
+        toast.error('Registration failed');
       }
     } finally {
       setIsLoading(false);

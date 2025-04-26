@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthSession, AuthUser } from '@/types/auth';
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           
+          // Email is verified, set session
           setSession({
             user: {
               id: data.session.user.id,
@@ -154,6 +156,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUpWithEmail = async (email: string, password: string, username: string): Promise<AuthData | null> => {
     try {
       console.log("Attempting to sign up with email:", email);
+      
+      // First check if email already exists
+      const { data: { users }, error: checkError } = await supabase.auth.admin.listUsers({
+        filter: {
+          email
+        }
+      }).catch(() => ({ data: { users: [] }, error: null }));
+      
+      if (users && users.length > 0) {
+        toast.error("Email already registered");
+        throw new Error("Email already registered. Please use a different email or log in.");
+      }
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -168,7 +183,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (error) {
         console.error("Sign up error:", error.message);
         toast.error(error.message || 'Failed to sign up');
-        return null;
+        throw error;
+      }
+      
+      if (!data.user) {
+        console.error("Sign up failed: No user data returned");
+        toast.error('Signup failed: No user data returned');
+        throw new Error("Registration failed: No user data returned");
       }
       
       console.log("Sign up successful:", data?.user?.id);
@@ -177,11 +198,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Since we want email verification, sign out the user
       await supabase.auth.signOut();
       setSession({ user: null, isLoading: false, isAuthenticated: false });
-      return null;
+      
+      return null; // Return null to indicate that email verification is required
     } catch (error) {
       console.error("Sign up exception:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to sign up');
-      return null;
+      throw error; // Rethrow to allow the component to handle it
     }
   };
 
@@ -225,6 +247,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Ensure state is updated on sign out
       setSession({ user: null, isLoading: false, isAuthenticated: false });
       toast.success('Successfully signed out!');
+      
+      // Clear local storage items related to user data
+      localStorage.removeItem("user");
+      
     } catch (error) {
       console.error("Sign out exception:", error);
       toast.error(error instanceof Error ? error.message : 'Failed to sign out');
@@ -256,8 +282,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Create alias functions to match component usage
-  const register = (username: string, email: string, password: string) => 
-    signUpWithEmail(email, password, username);
+  const register = async (username: string, email: string, password: string) => {
+    try {
+      return await signUpWithEmail(email, password, username);
+    } catch (error) {
+      // Let the component handle the error
+      throw error;
+    }
+  };
+  
   const logout = signOut;
 
   return (
