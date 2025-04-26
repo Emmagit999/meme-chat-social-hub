@@ -140,7 +140,7 @@ export const useMessaging = () => {
           setReconnectAttempt(prev => prev + 1);
         }, 3000);
       })
-      .subscribe(status => {
+      .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           console.log('Realtime subscription active');

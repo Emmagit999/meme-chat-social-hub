@@ -54,8 +54,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log("Auth state changed:", event, currentSession?.user?.id);
       
-      // Fix: Changed the comparison to properly check if event is "SIGNED_OUT"
-      if (event === "SIGNED_OUT") {
+      // Fix: Use string comparison instead of type comparison
+      if (String(event) === "SIGNED_OUT") {
         setSession({ user: null, isLoading: false, isAuthenticated: false });
         localStorage.removeItem("user");
         return;
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                                currentSession.user.app_metadata?.provider !== 'email' ||
                                currentSession.user.app_metadata?.email_verified;
                                
-        if (!isEmailVerified && event !== 'SIGNED_OUT') {
+        if (!isEmailVerified && String(event) !== 'SIGNED_OUT') {
           console.log("User email not verified in auth change");
           toast.error("Please verify your email before continuing");
           await supabase.auth.signOut();
