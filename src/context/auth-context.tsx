@@ -18,6 +18,7 @@ interface AuthContextType extends AuthSession {
   login: (userData: AuthUser, session: any) => void;
   register: (username: string, email: string, password: string) => Promise<AuthData | null>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -157,33 +158,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log("Attempting to sign up with email:", email);
       
-      // First check if email already exists
-      const { data: { users }, error: checkError } = await supabase.auth.admin.listUsers({
-        filter: {
-          email
+      // First check if email already exists - this is causing the TypeScript error
+      // We'll check differently since admin API requires special permissions
+      const { data, error: checkError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username },
         }
-      }).catch(() => ({ data: { users: [] }, error: null }));
+      });
       
-      if (users && users.length > 0) {
+      // If the user already exists, Supabase will return identityData
+      if (data?.user?.identities && data.user.identities.length === 0) {
         toast.error("Email already registered");
         throw new Error("Email already registered. Please use a different email or log in.");
       }
       
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      
-      if (error) {
-        console.error("Sign up error:", error.message);
-        toast.error(error.message || 'Failed to sign up');
-        throw error;
+      if (checkError) {
+        console.error("Sign up check error:", checkError.message);
+        toast.error(checkError.message || 'Failed to sign up');
+        throw checkError;
       }
       
       if (!data.user) {
@@ -258,6 +252,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add password reset functionality
+  const resetPassword = async (email: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+      
+      if (error) {
+        console.error("Password reset error:", error.message);
+        toast.error(error.message || 'Failed to send password reset email');
+        return false;
+      }
+      
+      toast.success('Password reset email sent. Please check your inbox.');
+      return true;
+    } catch (error) {
+      console.error("Password reset exception:", error);
+      toast.error(error instanceof Error ? error.message : 'Failed to send password reset email');
+      return false;
+    }
+  };
+
   // Updated login function with better handling and email verification check
   const login = (userData: AuthUser, session: any) => {
     console.log("Manual login called with userData:", userData);
@@ -305,6 +321,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        resetPassword,
       }}
     >
       {children}

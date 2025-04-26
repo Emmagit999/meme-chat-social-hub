@@ -8,8 +8,14 @@ import { Chrome } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
-export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
-  const [username, setUsername] = useState('');
+export const LoginForm = ({ 
+  onToggleForm, 
+  onResetPassword 
+}: { 
+  onToggleForm: () => void;
+  onResetPassword: () => void;
+}) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, signInWithEmail } = useAuth();
@@ -20,10 +26,10 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
     setIsLoading(true);
     
     try {
-      console.log("Login form - Attempting to sign in with:", username);
+      console.log("Login form - Attempting to sign in with:", email);
       
       // Use signInWithEmail and handle null response
-      const authData = await signInWithEmail(username, password);
+      const authData = await signInWithEmail(email, password);
       console.log("Login form - Sign in successful, auth data:", authData);
       
       if (!authData || !authData.user) {
@@ -33,10 +39,10 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
       // Create a user object from auth data
       const userData = {
         id: authData.user.id,
-        username: authData.user.user_metadata?.username || username.split('@')[0],
+        username: authData.user.user_metadata?.username || email.split('@')[0],
         displayName: authData.user.user_metadata?.username || 
-                    (username.split('@')[0].charAt(0).toUpperCase() + username.split('@')[0].slice(1)),
-        email: authData.user.email || username,
+                    (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)),
+        email: authData.user.email || email,
         avatar: authData.user.user_metadata?.avatar_url || "/assets/avatar1.jpg",
         isPro: authData.user.user_metadata?.isPro || false
       };
@@ -105,12 +111,13 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="username">Username</Label>
+          <Label htmlFor="email">Email</Label>
           <Input
-            id="username"
-            placeholder="meme_lord"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            id="email"
+            type="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
@@ -125,6 +132,15 @@ export const LoginForm = ({ onToggleForm }: { onToggleForm: () => void }) => {
             onChange={(e) => setPassword(e.target.value)}
             required
           />
+          <div className="text-right">
+            <button 
+              type="button"
+              onClick={onResetPassword} 
+              className="text-xs text-memeGreen hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
         </div>
         
         <Button type="submit" className="w-full bg-memeGreen hover:bg-memeGreen/90" disabled={isLoading}>

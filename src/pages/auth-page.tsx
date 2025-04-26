@@ -3,12 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginForm } from "@/components/auth/login-form";
 import { RegisterForm } from "@/components/auth/register-form";
+import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from '@/context/auth-context';
 import { TriangleIcon } from 'lucide-react';
 
+type AuthMode = 'login' | 'register' | 'reset-password';
+
 const AuthPage = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const { isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   
@@ -20,8 +23,8 @@ const AuthPage = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  const toggleForm = () => {
-    setIsLogin(!isLogin);
+  const toggleForm = (mode: AuthMode) => {
+    setAuthMode(mode);
   };
 
   // If already authenticated, don't render anything (useEffect will redirect)
@@ -44,10 +47,14 @@ const AuthPage = () => {
 
         <Card>
           <CardContent className="pt-6">
-            {isLogin ? (
-              <LoginForm onToggleForm={toggleForm} />
-            ) : (
-              <RegisterForm onToggleForm={toggleForm} />
+            {authMode === 'login' && (
+              <LoginForm onToggleForm={() => toggleForm('register')} onResetPassword={() => toggleForm('reset-password')} />
+            )}
+            {authMode === 'register' && (
+              <RegisterForm onToggleForm={() => toggleForm('login')} />
+            )}
+            {authMode === 'reset-password' && (
+              <ResetPasswordForm onToggleLogin={() => toggleForm('login')} />
             )}
           </CardContent>
         </Card>
