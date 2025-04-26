@@ -15,22 +15,20 @@ import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import SplashScreen from "@/components/ui/splash-screen";
 import PalsPage from "@/pages/pals-page";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import Index from "@/pages/Index";
 import ResetPassword from "@/pages/reset-password";
+import AuthCallback from "@/pages/auth-callback";
 
 // Create an AuthCheck component that uses the auth context
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
-  
-  console.log("AuthCheck - isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   
   if (isLoading) {
     return <SplashScreen />;
   }
   
   if (!isAuthenticated) {
-    console.log("User not authenticated, redirecting to /auth");
     return <Navigate to="/auth" />;
   }
   
@@ -40,8 +38,6 @@ const AuthCheck = ({ children }: { children: React.ReactNode }) => {
 // Create a component for the app routes to use the auth context
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useAuth();
-  
-  console.log("AppRoutes - isAuthenticated:", isAuthenticated, "isLoading:", isLoading);
   
   if (isLoading) {
     return <SplashScreen />;
@@ -63,7 +59,7 @@ const AppRoutes = () => {
           />
           <Route 
             path="/auth/callback" 
-            element={<AuthPage />} 
+            element={<AuthCallback />} 
           />
           <Route 
             path="/home" 
@@ -126,7 +122,7 @@ function App() {
         <DataProvider>
           <Router>
             <AppRoutes />
-            <Toaster />
+            <Toaster position="top-center" closeButton richColors />
           </Router>
         </DataProvider>
       </AuthProvider>

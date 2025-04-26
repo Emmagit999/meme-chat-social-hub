@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/context/auth-context";
-import { Chrome } from 'lucide-react';
+import { useAuth } from "@/hooks/use-auth";
+import { Chrome, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
@@ -18,11 +18,43 @@ export const LoginForm = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, signInWithEmail } = useAuth();
+  const [formErrors, setFormErrors] = useState({
+    email: '',
+    password: '',
+  });
+  const { signInWithEmail } = useAuth();
   const navigate = useNavigate();
+
+  // Form validation functions
+  const validateEmail = (email: string) => {
+    if (!email) return "Email is required";
+    if (!/\S+@\S+\.\S+/.test(email)) return "Invalid email address";
+    return "";
+  };
+
+  const validatePassword = (password: string) => {
+    if (!password) return "Password is required";
+    return "";
+  };
+
+  const validateForm = () => {
+    const errors = {
+      email: validateEmail(email),
+      password: validatePassword(password),
+    };
+    
+    setFormErrors(errors);
+    
+    // Return true if no errors (all values are empty strings)
+    return !Object.values(errors).some(error => error);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!validateForm()) return;
+    
     setIsLoading(true);
     
     try {
@@ -36,30 +68,25 @@ export const LoginForm = ({
         throw new Error("Authentication failed or no user data returned");
       }
       
-      // Create a user object from auth data
-      const userData = {
-        id: authData.user.id,
-        username: authData.user.user_metadata?.username || email.split('@')[0],
-        displayName: authData.user.user_metadata?.username || 
-                    (email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1)),
-        email: authData.user.email || email,
-        avatar: authData.user.user_metadata?.avatar_url || "/assets/avatar1.jpg",
-        isPro: authData.user.user_metadata?.isPro || false
-      };
-      
-      // Call login with the user data object and auth data session
-      login(userData, authData.session);
-      
-      console.log("Login form - Updated user context, navigating to home");
-      toast.success("Login successful!");
-      
+      // Successfully logged in, navigation will happen through auth listener
       // Force a small delay before navigation to ensure state is updated
       setTimeout(() => {
-        navigate('/');
+        navigate('/home');
       }, 300);
     } catch (error) {
       console.error("Login failed", error);
       toast.error(error instanceof Error ? error.message : "Login failed. Please check your credentials.");
+      
+      // Handle specific errors
+      if (error instanceof Error) {
+        if (error.message.includes('Invalid login')) {
+          toast.error("Invalid email or password. Please try again.");
+        } else if (error.message.includes('email')) {
+          setFormErrors(prev => ({ ...prev, email: error.message }));
+        } else if (error.message.includes('password')) {
+          setFormErrors(prev => ({ ...prev, password: error.message }));
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -72,21 +99,9 @@ export const LoginForm = ({
       const authData = await signInWithEmail("demo@example.com", "password123");
       
       if (authData && authData.user) {
-        const userData = {
-          id: authData.user.id,
-          username: "demolord",
-          displayName: "Demo User",
-          email: "demo@example.com",
-          avatar: "/assets/avatar1.jpg",
-          isPro: true
-        };
-        
-        login(userData, authData.session);
         toast.success("Demo login successful!");
         
-        setTimeout(() => {
-          navigate('/');
-        }, 300);
+        // Navigation will happen via auth state change listener
       } else {
         throw new Error("Demo login failed");
       }
@@ -117,9 +132,17 @@ export const LoginForm = ({
             type="email"
             placeholder="your@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setFormErrors(prev => ({ ...prev, email: '' }));
+            }}
             required
+            className={formErrors.email ? "border-red-500" : ""}
+            disabled={isLoading}
           />
+          {formErrors.email && (
+            <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>
+          )}
         </div>
         
         <div className="space-y-2">
@@ -129,22 +152,42 @@ export const LoginForm = ({
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setFormErrors(prev => ({ ...prev, password: '' }));
+            }}
             required
+            className={formErrors.password ? "border-red-500" : ""}
+            disabled={isLoading}
           />
+          {formErrors.password && (
+            <p className="text-red-500 text-xs mt-1">{formErrors.password}</p>
+          )}
           <div className="text-right">
             <button 
               type="button"
               onClick={onResetPassword} 
               className="text-xs text-memeGreen hover:underline"
+              disabled={isLoading}
             >
               Forgot password?
             </button>
           </div>
         </div>
         
-        <Button type="submit" className="w-full bg-memeGreen hover:bg-memeGreen/90" disabled={isLoading}>
-          {isLoading ? "Logging in..." : "Log in"}
+        <Button 
+          type="submit" 
+          className="w-full bg-memeGreen hover:bg-memeGreen/90" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Logging in...
+            </>
+          ) : (
+            "Log in"
+          )}
         </Button>
       </form>
       
@@ -164,6 +207,7 @@ export const LoginForm = ({
           variant="outline" 
           onClick={handleGoogleLogin} 
           className="flex items-center justify-center gap-2"
+          disabled={isLoading}
         >
           <Chrome className="h-5 w-5" />
           Google
@@ -171,6 +215,7 @@ export const LoginForm = ({
         <Button 
           variant="outline" 
           onClick={handlePhoneLogin}
+          disabled={isLoading}
         >
           Phone
         </Button>
@@ -181,6 +226,8 @@ export const LoginForm = ({
         <button
           onClick={onToggleForm}
           className="text-memeGreen hover:underline font-medium"
+          type="button"
+          disabled={isLoading}
         >
           Sign up
         </button>

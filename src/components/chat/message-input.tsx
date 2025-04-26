@@ -1,73 +1,131 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Smile, Send } from "lucide-react";
+import { Smile, Send, AlertCircle, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface MessageInputProps {
   onSendMessage: (message: string) => void;
+  isSending: boolean;
+  isConnected: boolean;
 }
 
 const EMOJI_LIST = ["😀", "😂", "😊", "😍", "🥰", "😎", "🙌", "👍", "❤️", "🔥", "👋", "🎉", "🤔", "😢", "😭", "😡", "🤮", "🤯", "🥳", "😴", "👍", "👏", "🙌", "🤣", "😎", "🙄", "😘", "💯", "🔥", "👀"];
 
-export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
+export const MessageInput: React.FC<MessageInputProps> = ({ 
+  onSendMessage, 
+  isSending, 
+  isConnected 
+}) => {
   const [messageText, setMessageText] = useState('');
+  const [characterCount, setCharacterCount] = useState(0);
+  const MAX_CHARACTERS = 500;
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Focus input on mount
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !isConnected || isSending) return;
     
     onSendMessage(messageText);
     setMessageText('');
+    setCharacterCount(0);
     inputRef.current?.focus();
   };
 
   const insertEmoji = (emoji: string) => {
-    setMessageText(prev => prev + emoji);
+    if (characterCount + emoji.length <= MAX_CHARACTERS) {
+      setMessageText(prev => prev + emoji);
+      setCharacterCount(prev => prev + emoji.length);
+    }
     inputRef.current?.focus();
   };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newText = e.target.value;
+    if (newText.length <= MAX_CHARACTERS) {
+      setMessageText(newText);
+      setCharacterCount(newText.length);
+    }
+  };
+
+  const isOverLimit = characterCount > MAX_CHARACTERS;
+  const isNearLimit = characterCount > MAX_CHARACTERS * 0.9;
 
   return (
-    <form onSubmit={handleSendMessage} className="p-3 border-t border-gray-200 bg-black flex gap-2">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
-            <Smile className="h-5 w-5" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="start">
-          <div className="grid grid-cols-6 gap-2">
-            {EMOJI_LIST.map(emoji => (
-              <button
-                key={emoji}
-                type="button"
-                className="text-xl hover:bg-gray-100 p-1 rounded cursor-pointer"
-                onClick={() => insertEmoji(emoji)}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+    <div className="p-3 border-t border-gray-200 bg-black">
+      {!isConnected && (
+        <div className="flex items-center justify-center mb-2 bg-red-900/20 text-red-500 p-2 rounded-md">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          <span className="text-sm">Connection lost. Reconnecting...</span>
+        </div>
+      )}
       
-      <Input
-        ref={inputRef}
-        placeholder="Send a message"
-        value={messageText}
-        onChange={(e) => setMessageText(e.target.value)}
-        className="flex-1 border-gray-700 bg-gray-900 text-yellow-500 rounded-full placeholder-yellow-500/50"
-        autoFocus
-      />
-      <Button 
-        type="submit" 
-        className="bg-yellow-500 hover:bg-yellow-600 text-black rounded-full h-10 w-10 p-0 flex items-center justify-center"
-        disabled={!messageText.trim()}
-      >
-        <Send className="h-5 w-5" />
-      </Button>
-    </form>
+      <form onSubmit={handleSendMessage} className="flex gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button type="button" variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
+              <Smile className="h-5 w-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-64 p-2" align="start">
+            <div className="grid grid-cols-6 gap-2">
+              {EMOJI_LIST.map(emoji => (
+                <button
+                  key={emoji}
+                  type="button"
+                  className="text-xl hover:bg-gray-100 p-1 rounded cursor-pointer"
+                  onClick={() => insertEmoji(emoji)}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+        
+        <div className="flex-1 relative">
+          <Input
+            ref={inputRef}
+            placeholder="Send a message"
+            value={messageText}
+            onChange={handleInputChange}
+            className={`flex-1 border-gray-700 bg-gray-900 text-yellow-500 rounded-full placeholder-yellow-500/50 pr-16 ${
+              isNearLimit ? 'border-yellow-500' : ''
+            } ${
+              isOverLimit ? 'border-red-500' : ''
+            }`}
+            autoFocus
+            disabled={!isConnected || isSending}
+          />
+          <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-xs ${
+            isNearLimit ? 'text-yellow-500' : 'text-gray-500'
+          } ${
+            isOverLimit ? 'text-red-500' : ''
+          }`}>
+            {characterCount}/{MAX_CHARACTERS}
+          </div>
+        </div>
+        
+        <Button 
+          type="submit" 
+          className="bg-yellow-500 hover:bg-yellow-600 text-black rounded-full h-10 w-10 p-0 flex items-center justify-center"
+          disabled={!messageText.trim() || !isConnected || isSending}
+        >
+          {isSending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-5 w-5" />
+          )}
+        </Button>
+      </form>
+    </div>
   );
 };

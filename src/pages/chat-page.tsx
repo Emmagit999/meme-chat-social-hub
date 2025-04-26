@@ -3,9 +3,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useChat } from "@/hooks/use-chat";
-import { useAuth } from "@/context/auth-context";
-import { MessageCircle, Plus, Search, Users } from "lucide-react";
+import { useMessaging } from "@/hooks/use-messaging";
+import { useAuth } from "@/hooks/use-auth";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,6 +15,7 @@ import { MessageInput } from "@/components/chat/message-input";
 import { User } from '@/types';
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const EmptyState = () => (
   <div className="h-full flex items-center justify-center flex-col p-4 text-center">
@@ -32,6 +33,32 @@ const EmptyState = () => (
   </div>
 );
 
+const LoadingState = () => (
+  <div className="flex flex-col gap-4 p-4">
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-12 w-12 rounded-full" />
+      <div className="space-y-2 flex-1">
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+    </div>
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-12 w-12 rounded-full" />
+      <div className="space-y-2 flex-1">
+        <Skeleton className="h-4 w-1/4" />
+        <Skeleton className="h-3 w-1/3" />
+      </div>
+    </div>
+    <div className="flex items-center gap-3">
+      <Skeleton className="h-12 w-12 rounded-full" />
+      <div className="space-y-2 flex-1">
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-3 w-1/4" />
+      </div>
+    </div>
+  </div>
+);
+
 const ChatPage: React.FC = () => {
   const { user } = useAuth();
   const { 
@@ -41,9 +68,12 @@ const ChatPage: React.FC = () => {
     setActiveChat,
     sendMessage,
     isLoading,
-    getSuggestedUsers,
-    getUserById
-  } = useChat();
+    isSending,
+    isConnected,
+    reconnect,
+    getUserById,
+    getSuggestedUsers
+  } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -99,7 +129,7 @@ const ChatPage: React.FC = () => {
   // Convert AuthUser to User type with the required createdAt property
   const currentUser: User = {
     ...user,
-    createdAt: new Date(), // Add missing createdAt property
+    createdAt: new Date(),
     username: user.username || 'user',
   };
   
@@ -142,11 +172,21 @@ const ChatPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-0 h-[calc(100vh-8rem)] overflow-hidden shadow-lg rounded-lg border border-gray-700">
         {/* Chat List */}
         {showChatList && (
-          <div className={`${isMobile ? 'col-span-1' : 'md:col-span-1'} bg-gray-900 border-r border-gray-700`}>
+          <div className={`${isMobile ? 'col-span-1' : 'md:col-span-1'} bg-gray-900 border-r border-gray-700 flex flex-col h-full`}>
             <div className="p-4 border-b border-gray-700 bg-black text-yellow-500">
               <h2 className="font-semibold flex items-center">
                 <span>{user.displayName || user.username}</span>
                 <div className="ml-auto flex gap-2">
+                  {!isConnected && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-red-500 hover:text-red-400 hover:bg-gray-800"
+                      onClick={() => reconnect()}
+                    >
+                      <WifiOff className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
@@ -174,11 +214,9 @@ const ChatPage: React.FC = () => {
               />
             </div>
             
-            <ScrollArea className="h-[calc(100%-8rem)]">
+            <ScrollArea className="flex-1">
               {isLoading ? (
-                <div className="flex justify-center p-4">
-                  <div className="animate-pulse text-yellow-500">Loading...</div>
-                </div>
+                <LoadingState />
               ) : filteredChats.length === 0 ? (
                 <div className="p-4 text-center text-gray-400">
                   <p className="mb-2">No conversations yet</p>
@@ -248,7 +286,7 @@ const ChatPage: React.FC = () => {
         )}
         
         {/* Chat Messages */}
-        <div className={`${isMobile ? 'col-span-1' : 'md:col-span-2'} flex flex-col bg-gray-900 ${(!isMobile || !showChatList) ? 'block' : 'hidden'}`}>
+        <div className={`${isMobile ? 'col-span-1' : 'md:col-span-2'} flex flex-col bg-gray-900 ${(!isMobile || !showChatList) ? 'block' : 'hidden'} h-full`}>
           {activeChat ? (
             <>
               <ChatHeader 
@@ -257,9 +295,26 @@ const ChatPage: React.FC = () => {
                 userId={getOtherUser(activeChat).id}
                 onBackClick={handleBackToList}
                 showBackButton={isMobile}
+                isConnected={isConnected}
               />
               
               <ScrollArea className="flex-1 p-4 bg-gray-900">
+                {!isConnected && (
+                  <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
+                    <WifiOff className="h-4 w-4 mr-2" />
+                    <span className="flex-1">Connection lost. Messages may not be delivered.</span>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="ml-2 border-red-500 text-red-500 hover:bg-red-500/20"
+                      onClick={() => reconnect()}
+                    >
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Reconnect
+                    </Button>
+                  </div>
+                )}
+                
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400">
                     No messages yet. Say hello!
@@ -279,7 +334,11 @@ const ChatPage: React.FC = () => {
                 )}
               </ScrollArea>
               
-              <MessageInput onSendMessage={sendMessage} />
+              <MessageInput 
+                onSendMessage={sendMessage}
+                isSending={isSending}
+                isConnected={isConnected}
+              />
             </>
           ) : (
             <EmptyState />
