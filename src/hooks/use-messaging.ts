@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -106,9 +105,14 @@ export const useMessaging = () => {
     // Clean up any existing subscription
     cleanupRealtimeSubscription();
     
-    // Create new subscription
+    // Create new subscription - Fix: Added a third parameter for the subscription config
     const messagesChannel = supabase
-      .channel('public:messages')
+      .channel('public:messages', {
+        config: {
+          broadcast: { self: true },
+          presence: { key: user.id }
+        }
+      })
       .on('postgres_changes', { 
         event: 'INSERT', 
         schema: 'public', 

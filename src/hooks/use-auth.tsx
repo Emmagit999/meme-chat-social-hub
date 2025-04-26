@@ -54,7 +54,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
       console.log("Auth state changed:", event, currentSession?.user?.id);
       
-      if (event === 'SIGNED_OUT') {
+      // Fix: Changed the comparison to properly check if event is "SIGNED_OUT"
+      if (event === "SIGNED_OUT") {
         setSession({ user: null, isLoading: false, isAuthenticated: false });
         localStorage.removeItem("user");
         return;

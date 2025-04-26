@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ArrowLeft, MoreVertical } from "lucide-react";
+import { ArrowLeft, MoreVertical, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface ChatHeaderProps {
@@ -11,6 +11,7 @@ interface ChatHeaderProps {
   userId: string;
   onBackClick?: () => void;
   showBackButton?: boolean;
+  isConnected?: boolean; // Added isConnected as an optional prop
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ 
@@ -18,7 +19,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   avatarSrc = "/assets/avatar1.jpg",
   userId,
   onBackClick,
-  showBackButton = false
+  showBackButton = false,
+  isConnected = true // Default to true
 }) => {
   const navigate = useNavigate();
 
@@ -49,6 +51,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </AvatarFallback>
         </Avatar>
         <h2 className="font-semibold text-yellow-500">{username}</h2>
+        {!isConnected && (
+          <div className="ml-2 flex items-center text-red-500">
+            <WifiOff className="h-3 w-3 mr-1" />
+            <span className="text-xs">Offline</span>
+          </div>
+        )}
       </div>
       <Button variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
         <MoreVertical className="h-5 w-5" />
