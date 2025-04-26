@@ -126,13 +126,13 @@ export const useMessaging = () => {
           setReconnectAttempt(prev => prev + 1);
         }, 3000);
       })
-      .subscribe((status, err) => {
+      .subscribe((status, err, payload) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           console.log('Realtime subscription active');
         } else if (status === 'CHANNEL_ERROR') {
           setIsConnected(false);
-          console.error('Realtime subscription failed', err);
+          console.error('Realtime subscription failed', err, payload);
         }
       });
     
