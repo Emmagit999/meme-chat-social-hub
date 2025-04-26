@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -125,13 +126,13 @@ export const useMessaging = () => {
           setReconnectAttempt(prev => prev + 1);
         }, 3000);
       })
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true);
           console.log('Realtime subscription active');
         } else if (status === 'CHANNEL_ERROR') {
           setIsConnected(false);
-          console.error('Realtime subscription failed');
+          console.error('Realtime subscription failed', err);
         }
       });
     
