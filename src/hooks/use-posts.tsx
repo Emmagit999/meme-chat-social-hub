@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
@@ -23,7 +22,6 @@ export const usePosts = () => {
         setPosts(postsData?.map(post => ({
           id: post.id,
           userId: post.user_id,
-          // Access username and avatar directly from post columns instead of trying to access profiles
           username: post.username || 'anonymous',
           userAvatar: post.user_avatar || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
           content: post.content,
@@ -52,7 +50,6 @@ export const usePosts = () => {
     }
 
     try {
-      // Ensure type is one of the valid options
       const validType: 'meme' | 'roast' | 'joke' = 
         (postData.type === 'meme' || postData.type === 'roast' || postData.type === 'joke') 
           ? postData.type 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
@@ -12,6 +11,7 @@ export const useMessaging = () => {
   const [isSending, setIsSending] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
   // Calculate unread messages count
@@ -82,6 +82,7 @@ export const useMessaging = () => {
     isSending,
     isConnected,
     reconnect,
-    unreadMessages
+    unreadMessages,
+    isLoading
   };
 };

@@ -12,7 +12,7 @@ export type Post = {
   id: string;
   userId: string;
   username: string;
-  userAvatar?: string;
+  userAvatar: string;
   content: string;
   image?: string;
   video?: string;
