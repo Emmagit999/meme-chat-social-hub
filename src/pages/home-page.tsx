@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/posts/post-card";
 import { CreatePostForm } from "@/components/posts/create-post-form";
@@ -7,12 +7,19 @@ import { useData } from "@/context/data-context";
 import { Plus, Filter } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 const HomePage: React.FC = () => {
   const { posts, isLoading } = useData();
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke'>('all');
   const isMobile = useIsMobile();
+  const { requestPermission } = usePushNotifications();
+  
+  // Request notification permissions when the component mounts
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
   
   const filteredPosts = activeFilter === 'all' 
     ? posts 
@@ -57,7 +64,7 @@ const HomePage: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
           {filteredPosts.map(post => (
             <PostCard key={post.id} post={post} />
           ))}

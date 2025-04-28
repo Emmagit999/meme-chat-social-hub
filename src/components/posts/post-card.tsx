@@ -1,11 +1,11 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useRef, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
 import { useData } from "@/context/data-context";
-import { ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import { MessageCircle, ThumbsUp, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -24,17 +24,46 @@ interface PostCardProps {
     type: 'meme' | 'roast' | 'joke';
   };
   className?: string;
+  hideCommentLink?: boolean;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, className, hideCommentLink = false }) => {
   const { likePost } = useData();
   const { user } = useAuth();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const location = useLocation();
 
   const handleLike = () => {
     if (user) {
       likePost(post.id);
     }
   };
+
+  // Handle video play/pause when visible/not visible in viewport
+  useEffect(() => {
+    if (!videoRef.current) return;
+    
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            videoRef.current?.play().catch(e => console.log("Video play error:", e));
+          } else {
+            videoRef.current?.pause();
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+    
+    observer.observe(videoRef.current);
+    
+    return () => {
+      if (videoRef.current) {
+        observer.unobserve(videoRef.current);
+      }
+    };
+  }, []);
 
   const getPostTypeBadgeStyles = () => {
     switch (post.type) {
@@ -85,7 +114,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
         )}
         
         {post.video && (
-          <video controls className="w-full rounded-md mb-4">
+          <video 
+            ref={videoRef}
+            controls
+            className="w-full rounded-md mb-4"
+            playsInline
+            preload="metadata"
+            loop
+          >
             <source src={post.video} type="video/mp4" />
             Your browser does not support the video tag.
           </video>
@@ -96,23 +132,34 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
       <div className="flex items-center justify-between p-4 border-t border-gray-800 text-gray-400">
         <div className="flex items-center gap-4">
           <button 
-            className="flex items-center gap-2 hover:text-yellow-500 transition-colors"
+            className="flex items-center gap-2 hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
             onClick={handleLike}
+            aria-label="Like post"
           >
             <ThumbsUp size={18} />
             <span className="font-medium">{post.likes}</span>
           </button>
           
-          <Link 
-            to={`/post/${post.id}`}
-            className="flex items-center gap-2 hover:text-yellow-500 transition-colors"
-          >
-            <MessageSquare size={18} />
-            <span className="font-medium">{post.comments}</span>
-          </Link>
+          {hideCommentLink ? (
+            <div className="flex items-center gap-2 text-gray-400 p-2">
+              <MessageCircle size={18} />
+              <span className="font-medium">{post.comments}</span>
+            </div>
+          ) : (
+            <Link 
+              to={`/post/${post.id}`}
+              className="flex items-center gap-2 hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
+            >
+              <MessageCircle size={18} />
+              <span className="font-medium">{post.comments}</span>
+            </Link>
+          )}
         </div>
         
-        <button className="hover:text-yellow-500 transition-colors">
+        <button 
+          className="hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
+          aria-label="Share post"
+        >
           <Share2 size={18} />
         </button>
       </div>

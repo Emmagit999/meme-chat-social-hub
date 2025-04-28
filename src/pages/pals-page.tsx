@@ -42,7 +42,7 @@ const PalsPage: React.FC = () => {
   };
 
   return (
-    <div className="container py-6 px-4 md:px-6">
+    <div className="container py-6 px-4 md:px-6 mt-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-yellow-500">My Pals</h1>
         <Button 

@@ -7,7 +7,6 @@ import { AuthProvider } from "@/context/auth-context";
 import { DataProvider } from "@/context/data-context";
 import HomePage from "@/pages/home-page";
 import MergePage from "@/pages/merge-page";
-import RoastPage from "@/pages/roast-page";
 import ProfilePage from "@/pages/profile-page";
 import ChatPage from "@/pages/chat-page";
 import SearchPage from "@/pages/search-page";
@@ -21,6 +20,7 @@ import ResetPassword from "@/pages/reset-password";
 import AuthCallback from "@/pages/auth-callback";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationsPage from "@/pages/notifications-page";
+import PostDetailPage from "@/pages/post-detail-page";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -48,7 +48,7 @@ const AppRoutes = () => {
     <>
       {isAuthenticated && <Navbar />}
       <div className={`
-        ${isAuthenticated ? (isMobile ? 'pt-2 px-2' : 'pt-4 px-4') : ''}
+        ${isAuthenticated ? (isMobile ? 'pt-2 px-2' : 'pt-16 px-4') : ''}
         ${isMobile ? 'pb-20' : ''}
       `}>
         <Routes>
@@ -74,16 +74,16 @@ const AppRoutes = () => {
             element={<AuthCheck><MergePage /></AuthCheck>} 
           />
           <Route 
-            path="/roast" 
-            element={<AuthCheck><RoastPage /></AuthCheck>} 
-          />
-          <Route 
             path="/profile" 
             element={<AuthCheck><ProfilePage /></AuthCheck>} 
           />
           <Route 
             path="/profile/:userId" 
             element={<AuthCheck><ProfilePage /></AuthCheck>} 
+          />
+          <Route 
+            path="/post/:postId" 
+            element={<AuthCheck><PostDetailPage /></AuthCheck>} 
           />
           <Route 
             path="/chat" 
