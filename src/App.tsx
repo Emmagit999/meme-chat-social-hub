@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -19,8 +18,8 @@ import { useAuth } from "@/hooks/use-auth";
 import Index from "@/pages/Index";
 import ResetPassword from "@/pages/reset-password";
 import AuthCallback from "@/pages/auth-callback";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
-// Create an AuthCheck component that uses the auth context
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
   
@@ -35,9 +34,9 @@ const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Create a component for the app routes to use the auth context
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useAuth();
+  const isMobile = useIsMobile();
   
   if (isLoading) {
     return <SplashScreen />;
@@ -46,7 +45,10 @@ const AppRoutes = () => {
   return (
     <>
       {isAuthenticated && <Navbar />}
-      <div className={`${isAuthenticated ? 'pt-4' : ''}`}>
+      <div className={`
+        ${isAuthenticated ? (isMobile ? 'pt-2 px-2' : 'pt-4 px-4') : ''}
+        ${isMobile ? 'pb-20' : ''}
+      `}>
         <Routes>
           <Route path="/" element={<Index />} />
           <Route 
@@ -102,9 +104,9 @@ const AppRoutes = () => {
 
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Simulate a brief loading time for splash screen
     const timer = setTimeout(() => {
       setInitialLoading(false);
     }, 1000);
@@ -117,12 +119,16 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className={`min-h-screen bg-background ${isMobile ? 'pb-16' : ''}`}>
       <AuthProvider>
         <DataProvider>
           <Router>
             <AppRoutes />
-            <Toaster position="top-center" closeButton richColors />
+            <Toaster 
+              position={isMobile ? "bottom-center" : "top-center"} 
+              closeButton 
+              richColors 
+            />
           </Router>
         </DataProvider>
       </AuthProvider>
