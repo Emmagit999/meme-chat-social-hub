@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
@@ -19,6 +20,7 @@ import Index from "@/pages/Index";
 import ResetPassword from "@/pages/reset-password";
 import AuthCallback from "@/pages/auth-callback";
 import { useIsMobile } from "@/hooks/use-mobile";
+import NotificationsPage from "@/pages/notifications-page";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -92,6 +94,10 @@ const AppRoutes = () => {
             element={<AuthCheck><SearchPage /></AuthCheck>} 
           />
           <Route 
+            path="/notifications" 
+            element={<AuthCheck><NotificationsPage /></AuthCheck>} 
+          />
+          <Route 
             path="/pals" 
             element={<AuthCheck><PalsPage /></AuthCheck>} 
           />
@@ -107,6 +113,11 @@ function App() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
+    // Request notification permission as early as possible
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    
     const timer = setTimeout(() => {
       setInitialLoading(false);
     }, 1000);

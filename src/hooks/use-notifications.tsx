@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
+import { usePushNotifications } from './use-push-notifications';
 
 export interface Notification {
   id: string;
@@ -23,8 +23,8 @@ export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const { sendNotification, permissionStatus } = usePushNotifications();
 
-  // Load notifications from Supabase/localStorage
   useEffect(() => {
     if (!user) {
       setNotifications([]);
@@ -36,7 +36,6 @@ export const useNotifications = () => {
     const loadNotifications = async () => {
       setIsLoading(true);
       try {
-        // Try to fetch from Supabase first
         const { data, error } = await supabase
           .from('notifications')
           .select('*')
@@ -48,7 +47,6 @@ export const useNotifications = () => {
         }
         
         if (data && data.length > 0) {
-          // Convert Supabase data to Notification objects
           const formattedNotifications = data.map((notification: any) => ({
             id: notification.id,
             type: notification.type,
@@ -64,7 +62,6 @@ export const useNotifications = () => {
           setNotifications(formattedNotifications);
           setUnreadCount(formattedNotifications.filter(n => !n.read).length);
         } else {
-          // Fallback to localStorage
           fallbackToLocalStorage();
         }
       } catch (error) {
@@ -81,7 +78,6 @@ export const useNotifications = () => {
         try {
           const parsedNotifications = JSON.parse(savedNotifications);
           
-          // Filter notifications for current user and convert dates
           const userNotifications = parsedNotifications
             .filter((n: any) => !n.userId || n.userId === user.id)
             .map((n: any) => ({
@@ -105,7 +101,6 @@ export const useNotifications = () => {
     
     loadNotifications();
     
-    // Set up real-time listener for new notifications
     const notificationsChannel = supabase
       .channel('public:notifications')
       .on('postgres_changes', { 
@@ -132,13 +127,22 @@ export const useNotifications = () => {
           setNotifications(prev => [formattedNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
           
-          // Show toast notification
           toast(
             <div className="flex items-center gap-3">
               <span className="font-medium">{formattedNotification.from}:</span>
               <span>{formattedNotification.content}</span>
             </div>
           );
+          
+          if (permissionStatus === 'granted') {
+            sendNotification(
+              `MemChat: New ${formattedNotification.type}`, 
+              {
+                body: `${formattedNotification.from}: ${formattedNotification.content}`,
+                icon: formattedNotification.avatar,
+              }
+            );
+          }
         }
       })
       .subscribe();
@@ -146,16 +150,14 @@ export const useNotifications = () => {
     return () => {
       supabase.removeChannel(notificationsChannel);
     };
-  }, [user]);
+  }, [user, sendNotification, permissionStatus]);
 
-  // Save notifications to localStorage as backup
   useEffect(() => {
     if (!isLoading && user) {
       localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
     }
   }, [notifications, isLoading, user]);
 
-  // Helper function to format time ago
   const getTimeAgo = (date: Date): string => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -171,7 +173,6 @@ export const useNotifications = () => {
     return date.toLocaleDateString();
   };
 
-  // Function to add a new notification
   const addNotification = async (notification: Omit<Notification, 'id' | 'time' | 'createdAt'>) => {
     if (!user) return;
     
@@ -183,7 +184,6 @@ export const useNotifications = () => {
     };
     
     try {
-      // Save to Supabase
       const { error } = await supabase
         .from('notifications')
         .insert({
@@ -201,12 +201,9 @@ export const useNotifications = () => {
       if (error) {
         throw error;
       }
-      
-      // If saved successfully, real-time listener will update state
     } catch (error) {
       console.error('Error saving notification:', error);
       
-      // Fall back to local state
       setNotifications(prev => [newNotification, ...prev]);
       if (!newNotification.read) {
         setUnreadCount(prev => prev + 1);
@@ -214,10 +211,8 @@ export const useNotifications = () => {
     }
   };
 
-  // Function to mark notification as read
   const markAsRead = async (id: string) => {
     try {
-      // Update state
       setNotifications(prev => 
         prev.map(notification => 
           notification.id === id 
@@ -228,7 +223,6 @@ export const useNotifications = () => {
       
       setUnreadCount(prev => Math.max(0, prev - 1));
       
-      // Update in Supabase
       await supabase
         .from('notifications')
         .update({ read: true })
@@ -238,17 +232,14 @@ export const useNotifications = () => {
     }
   };
 
-  // Function to mark all as read
   const markAllAsRead = async () => {
     try {
-      // Update state
       setNotifications(prev => 
         prev.map(notification => ({ ...notification, read: true }))
       );
       
       setUnreadCount(0);
       
-      // Update in Supabase
       if (user) {
         await supabase
           .from('notifications')
@@ -260,14 +251,11 @@ export const useNotifications = () => {
     }
   };
 
-  // Function to clear all notifications
   const clearNotifications = async () => {
     try {
-      // Update state
       setNotifications([]);
       setUnreadCount(0);
       
-      // Delete from Supabase
       if (user) {
         await supabase
           .from('notifications')
@@ -275,7 +263,6 @@ export const useNotifications = () => {
           .eq('user_id', user.id);
       }
       
-      // Clear from localStorage
       localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
     } catch (error) {
       console.error('Error clearing notifications:', error);

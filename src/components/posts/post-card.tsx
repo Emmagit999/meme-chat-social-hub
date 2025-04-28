@@ -1,8 +1,13 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
+import { useData } from "@/context/data-context";
+import { ThumbsUp, MessageSquare, Share2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 interface PostCardProps {
   post: {
@@ -22,9 +27,31 @@ interface PostCardProps {
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
+  const { likePost } = useData();
+  const { user } = useAuth();
+
+  const handleLike = () => {
+    if (user) {
+      likePost(post.id);
+    }
+  };
+
+  const getPostTypeBadgeStyles = () => {
+    switch (post.type) {
+      case 'meme':
+        return 'bg-blue-500/20 text-blue-400';
+      case 'roast':
+        return 'bg-orange-500/20 text-orange-400';
+      case 'joke':
+        return 'bg-green-500/20 text-green-400';
+      default:
+        return 'bg-blue-500/20 text-blue-400';
+    }
+  };
+
   return (
-    <div className={cn("bg-black border border-gray-800 rounded-lg overflow-hidden", className)}>
-      <div className="p-4">
+    <div className={cn("bg-black border border-gray-800 rounded-lg overflow-hidden h-full flex flex-col", className)}>
+      <div className="p-4 flex-grow">
         {/* Header with user info and post type tag */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
@@ -44,23 +71,17 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
             </div>
           </div>
           
-          {/* Post type tag */}
-          <div className={`text-xs px-2 py-1 rounded-full ${
-            post.type === 'meme' 
-              ? 'bg-blue-500/20 text-blue-400' 
-              : post.type === 'roast' 
-                ? 'bg-orange-500/20 text-orange-400'
-                : 'bg-green-500/20 text-green-400'
-          }`}>
+          {/* Post type badge */}
+          <Badge className={`${getPostTypeBadgeStyles()}`} variant="outline">
             {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-          </div>
+          </Badge>
         </div>
         
         {/* Post content */}
         <p className="text-white mb-4">{post.content}</p>
         
         {post.image && (
-          <img src={post.image} alt="Post Image" className="w-full rounded-md mb-4" />
+          <img src={post.image} alt="Post" className="w-full rounded-md mb-4" />
         )}
         
         {post.video && (
@@ -74,16 +95,26 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className }) => {
       {/* Post actions */}
       <div className="flex items-center justify-between p-4 border-t border-gray-800 text-gray-400">
         <div className="flex items-center gap-4">
-          <button className="hover:text-yellow-500 transition-colors">
-            <span className="font-medium">{post.likes} Likes</span>
+          <button 
+            className="flex items-center gap-2 hover:text-yellow-500 transition-colors"
+            onClick={handleLike}
+          >
+            <ThumbsUp size={18} />
+            <span className="font-medium">{post.likes}</span>
           </button>
-          <button className="hover:text-yellow-500 transition-colors">
-            <span className="font-medium">{post.comments} Comments</span>
-          </button>
+          
+          <Link 
+            to={`/post/${post.id}`}
+            className="flex items-center gap-2 hover:text-yellow-500 transition-colors"
+          >
+            <MessageSquare size={18} />
+            <span className="font-medium">{post.comments}</span>
+          </Link>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Add share and report buttons here */}
-        </div>
+        
+        <button className="hover:text-yellow-500 transition-colors">
+          <Share2 size={18} />
+        </button>
       </div>
     </div>
   );

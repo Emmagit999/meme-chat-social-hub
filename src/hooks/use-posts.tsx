@@ -1,17 +1,21 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
 import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
+import { useNotifications } from './use-notifications';
 
 export const usePosts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
     const loadPosts = async () => {
       try {
+        setIsLoading(true);
         const { data: postsData, error: postsError } = await supabase
           .from('posts')
           .select('*')
@@ -41,6 +45,61 @@ export const usePosts = () => {
     };
 
     loadPosts();
+
+    // Set up real-time updates for posts
+    const postsChannel = supabase
+      .channel('public:posts')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'posts'
+      }, (payload) => {
+        const newPost = payload.new as any;
+        
+        // Add the new post to the list
+        const formattedPost: Post = {
+          id: newPost.id,
+          userId: newPost.user_id,
+          username: newPost.username || 'anonymous',
+          userAvatar: newPost.user_avatar || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+          content: newPost.content,
+          image: newPost.image,
+          video: newPost.video,
+          likes: newPost.likes || 0,
+          comments: newPost.comments || 0,
+          createdAt: new Date(newPost.created_at),
+          type: newPost.type as 'meme' | 'roast' | 'joke'
+        };
+        
+        setPosts(prev => [formattedPost, ...prev]);
+      })
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'posts'
+      }, (payload) => {
+        const updatedPost = payload.new as any;
+        
+        // Update the post in the list
+        setPosts(prev => prev.map(post => 
+          post.id === updatedPost.id 
+            ? {
+                ...post,
+                content: updatedPost.content,
+                image: updatedPost.image,
+                video: updatedPost.video,
+                likes: updatedPost.likes || 0,
+                comments: updatedPost.comments || 0,
+                type: updatedPost.type as 'meme' | 'roast' | 'joke'
+              } 
+            : post
+        ));
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(postsChannel);
+    };
   }, []);
 
   const addPost = async (postData: Omit<Post, 'id' | 'likes' | 'comments' | 'createdAt'>) => {
@@ -86,8 +145,8 @@ export const usePosts = () => {
           type: data.type as 'meme' | 'roast' | 'joke'
         };
 
-        setPosts(prev => [newPost, ...prev]);
-        toast.success("Post created successfully!");
+        // Real-time will handle adding to list
+        toast.success(`${newPost.type.charAt(0).toUpperCase() + newPost.type.slice(1)} created!`);
       }
     } catch (error) {
       console.error('Error creating post:', error);
@@ -102,6 +161,7 @@ export const usePosts = () => {
     }
 
     try {
+      // Optimistically update UI
       setPosts(prev => 
         prev.map(post => 
           post.id === postId 
@@ -110,23 +170,55 @@ export const usePosts = () => {
         )
       );
 
+      // Get post info for notification
+      const postToLike = posts.find(p => p.id === postId);
+      
+      // Update likes in database
       const { error } = await supabase
         .from('posts')
-        .update({ likes: posts.find(p => p.id === postId)?.likes + 1 })
+        .update({ likes: posts.find(p => p.id === postId)?.likes + 1 || 1 })
         .eq('id', postId);
 
       if (error) throw error;
 
-      await supabase
+      // Record the like in post_likes table
+      const { error: likeError } = await supabase
         .from('post_likes')
         .insert({
           user_id: user.id,
           post_id: postId
         });
+
+      if (likeError) throw likeError;
+      
+      // Add notification for the post owner if it's not the current user
+      if (postToLike && postToLike.userId !== user.id) {
+        addNotification({
+          type: 'like',
+          from: user.username,
+          fromUserId: user.id,
+          avatar: user.avatar || '',
+          content: `liked your ${postToLike.type}`,
+          read: false
+        });
+        
+        // Create notification in database
+        await supabase.from('notifications').insert({
+          user_id: postToLike.userId,
+          type: 'like',
+          from_username: user.username,
+          from_user_id: user.id,
+          avatar: user.avatar,
+          content: `liked your ${postToLike.type}`,
+          read: false
+        });
+      }
+      
     } catch (error) {
       console.error('Error liking post:', error);
       toast.error("Failed to like post");
       
+      // Revert optimistic update
       setPosts(prev => 
         prev.map(post => 
           post.id === postId 
@@ -137,5 +229,9 @@ export const usePosts = () => {
     }
   };
 
-  return { posts, isLoading, addPost, likePost };
+  const getUserPosts = (userId: string): Post[] => {
+    return posts.filter(post => post.userId === userId);
+  };
+
+  return { posts, isLoading, addPost, likePost, getUserPosts };
 };
