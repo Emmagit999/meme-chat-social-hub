@@ -1,195 +1,124 @@
 
-import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/context/auth-context";
-import { User } from "@/types";
-import { MessageCircle, UserPlus, UserMinus, Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { useChat } from "@/hooks/use-chat";
-import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client"; // Fixed import path
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/use-auth';
+import { useMessaging } from '@/hooks/use-messaging';
+import { User } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { MessageCircle, UserRound, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
-  const { startNewChat } = useChat();
-  const navigate = useNavigate();
-  const [pals, setPals] = useState<User[]>([]);
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const { getFriends, startNewChat } = useMessaging();
+  const [friends, setFriends] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const navigate = useNavigate();
+
   useEffect(() => {
-    const fetchPals = async () => {
+    const loadFriends = async () => {
       if (!user) return;
       
-      setIsLoading(true);
       try {
-        // First, fetch friends IDs
-        const { data: friendsData, error: friendsError } = await supabase
-          .from('friends')
-          .select('friend_id')
-          .eq('user_id', user.id);
-
-        if (friendsError) throw friendsError;
-        
-        if (friendsData && friendsData.length > 0) {
-          // Extract friend IDs
-          const friendIds = friendsData.map(friend => friend.friend_id);
-          
-          // Now fetch the profile data for those friends
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', friendIds);
-            
-          if (profilesError) throw profilesError;
-          
-          if (profilesData) {
-            const formattedPals: User[] = profilesData.map(profile => ({
-              id: profile.id,
-              username: profile.username || 'user',
-              displayName: profile.username || 'User',
-              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-              createdAt: new Date(profile.updated_at || new Date()),
-              bio: profile.bio || '',
-              isPro: profile.is_pro || false
-            }));
-            
-            setPals(formattedPals);
-          }
-        } else {
-          // No friends found
-          setPals([]);
-        }
+        setIsLoading(true);
+        const friendsList = await getFriends();
+        setFriends(friendsList);
       } catch (error) {
-        console.error('Error fetching pals:', error);
-        toast.error('Failed to load pals');
+        console.error('Error loading friends:', error);
       } finally {
         setIsLoading(false);
       }
     };
+    
+    loadFriends();
+  }, [user, getFriends]);
 
-    fetchPals();
-    
-    const onlineInterval = setInterval(() => {
-      const randomStatus = Math.random() > 0.5;
-      if (randomStatus && !onlineUsers.includes("user2")) {
-        setOnlineUsers(prev => [...prev, "user2"]);
-        toast("Joke Master is now online!", {
-          icon: "🟢",
-        });
-      } else if (!randomStatus && onlineUsers.includes("user2")) {
-        setOnlineUsers(prev => prev.filter(id => id !== "user2"));
-      }
-    }, 30000); // Every 30 seconds
-    
-    return () => clearInterval(onlineInterval);
-  }, [user]);
-  
-  const handleRemovePal = (palId: string) => {
-    const updatedPals = pals.filter(pal => pal.id !== palId);
-    setPals(updatedPals);
-    toast.success("Pal removed successfully");
-  };
-  
-  const handleMessagePal = (palId: string) => {
-    startNewChat(palId);
-    navigate('/chat');
+  const handleStartChat = async (friendId: string) => {
+    const chatId = await startNewChat(friendId);
+    if (chatId) {
+      navigate('/chat');
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="container py-6">
-        <h1 className="text-2xl font-bold mb-6">Your Pals</h1>
-        <div className="animate-pulse text-center py-10">Loading your pals...</div>
-      </div>
-    );
-  }
-  
   return (
-    <div className="container py-6">
-      <h1 className="text-2xl font-bold mb-6 text-yellow-500">Your Pals</h1>
-      
-      {pals.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-10">
-            <p className="mb-4">You don't have any pals yet.</p>
-            <p className="text-muted-foreground mb-6">Find people to connect with through the Merge page!</p>
-            <Button onClick={() => navigate('/merge')} className="bg-memeGreen hover:bg-memeGreen/90">
-              Find Pals
-            </Button>
-          </CardContent>
-        </Card>
+    <div className="container py-6 px-4 md:px-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-yellow-500">My Pals</h1>
+        <Button 
+          onClick={() => navigate('/merge')}
+          className="bg-yellow-500 hover:bg-yellow-600 text-black"
+          size="sm"
+        >
+          Find More Friends
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-4 p-4 border border-gray-800 rounded-lg">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-9 w-20" />
+            </div>
+          ))}
+        </div>
+      ) : friends.length === 0 ? (
+        <div className="text-center py-10 border border-gray-800 rounded-lg bg-gray-900">
+          <Users className="h-12 w-12 mx-auto mb-3 text-yellow-500/50" />
+          <h2 className="text-xl mb-2 text-yellow-500">No pals yet</h2>
+          <p className="text-gray-400 mb-4">Find and connect with new friends!</p>
+          <Button 
+            onClick={() => navigate('/merge')}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black"
+          >
+            Find Friends
+          </Button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {pals.map(pal => (
-            <Card key={pal.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardHeader className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={pal.avatar} alt={pal.username} />
-                      <AvatarFallback>
-                        {pal.displayName?.substring(0, 2) || pal.username.substring(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    {onlineUsers.includes(pal.id) && (
-                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{pal.displayName || pal.username}</h3>
-                      {pal.isPro && (
-                        <Badge variant="outline" className="text-xs bg-memeGreen/20 text-memeGreen border-none">
-                          PRO
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-sm text-muted-foreground">@{pal.username}</span>
-                  </div>
+        <div className="space-y-3">
+          {friends.map((friend) => (
+            <div key={friend.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12 border border-yellow-500/30">
+                  <AvatarImage src={friend.avatar} />
+                  <AvatarFallback className="bg-gray-800">
+                    {friend.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="font-medium text-yellow-500">
+                    {friend.displayName || friend.username}
+                  </h3>
+                  <p className="text-xs text-gray-400">
+                    {friend.bio || 'No bio yet'}
+                  </p>
                 </div>
-              </CardHeader>
-              
-              <CardContent className="p-4 pt-0">
-                <p className="text-sm mb-4">{pal.bio || "No bio yet."}</p>
-                
-                <div className="flex justify-between items-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex gap-1 items-center"
-                    onClick={() => handleMessagePal(pal.id)}
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span>Message</span>
-                  </Button>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground"
-                      onClick={() => toast("Notifications turned on for " + pal.displayName)}
-                    >
-                      <Bell className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-red-400"
-                      onClick={() => handleRemovePal(pal.id)}
-                    >
-                      <UserMinus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => handleStartChat(friend.id)}
+                  variant="outline" 
+                  size="sm"
+                  className="flex items-center gap-1 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat</span>
+                </Button>
+                <Button
+                  onClick={() => navigate(`/profile/${friend.id}`)}
+                  variant="ghost" 
+                  size="sm"
+                  className="text-gray-400 hover:text-white"
+                >
+                  Profile
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}

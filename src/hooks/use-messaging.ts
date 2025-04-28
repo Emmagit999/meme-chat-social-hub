@@ -1,699 +1,77 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/context/auth-context";
 import { User, Message, Chat } from "@/types";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
-import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
+import { useChat } from "@/hooks/use-chat";
 
 export const useMessaging = () => {
-  const { user } = useAuth();
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { chats, messages, activeChat, setActiveChat, sendMessage: chatSendMessage, startNewChat, getSuggestedUsers, getUserById, registerUser, getFriends } = useChat();
   const [isSending, setIsSending] = useState(false);
-  const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
-  const [reconnectAttempt, setReconnectAttempt] = useState(0);
-  
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  
   const [isConnected, setIsConnected] = useState(true);
-  const reconnectTimer = useRef<any>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const { user } = useAuth();
 
+  // Calculate unread messages count
   useEffect(() => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    
-    const loadData = async () => {
-      try {
-        await fetchUsers();
-        await fetchChats();
-        
-        setIsLoading(false);
-        
-        setupRealtimeSubscription();
-      } catch (error) {
-        console.error('Error in loadData:', error);
-        setIsLoading(false);
-        toast.error("Failed to load messages. Please refresh.");
-      }
-    };
-    
-    loadData();
-    
-    return () => {
-      cleanupRealtimeSubscription();
-    };
-  }, [user, reconnectAttempt]);
-  
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsConnected(true);
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = null;
-      }
-      
-      setReconnectAttempt(prev => prev + 1);
-      toast.success("Connection restored");
-    };
-    
-    const handleOffline = () => {
-      setIsConnected(false);
-      toast.error("Connection lost. Attempting to reconnect...");
-      
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-      }
-      
-      reconnectTimer.current = setTimeout(() => {
-        if (!isConnected) {
-          setReconnectAttempt(prev => prev + 1);
-        }
-      }, 5000);
-    };
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      if (reconnectTimer.current) {
-        clearTimeout(reconnectTimer.current);
-      }
-    };
-  }, [isConnected]);
-
-  const setupRealtimeSubscription = useCallback(() => {
-    if (!user) return;
-    
-    cleanupRealtimeSubscription();
-    
-    const messagesChannel = supabase
-      .channel('public:messages', {
-        config: {
-          broadcast: { self: true },
-          presence: { key: user.id }
-        }
-      })
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'messages' 
-      }, (payload) => {
-        handleNewMessage(payload.new as any);
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'messages'
-      }, (payload) => {
-        handleMessageUpdate(payload.new as any);
-      })
-      .on('error', (error) => {
-        console.error('Realtime subscription error:', error);
-        setIsConnected(false);
-        
-        if (reconnectTimer.current) {
-          clearTimeout(reconnectTimer.current);
-        }
-        
-        reconnectTimer.current = setTimeout(() => {
-          setReconnectAttempt(prev => prev + 1);
-        }, 3000);
-      });
-    
-    messagesChannel.subscribe((status: REALTIME_SUBSCRIBE_STATES, err?: Error) => {
-      if (status === 'SUBSCRIBED') {
-        setIsConnected(true);
-        console.log('Realtime subscription active');
-      } else if (status === 'CHANNEL_ERROR') {
-        setIsConnected(false);
-        console.error('Realtime subscription failed', err);
-      }
-    });
-    
-    channelRef.current = messagesChannel;
-  }, [user]);
-
-  const cleanupRealtimeSubscription = useCallback(() => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
+    if (chats && user) {
+      const totalUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+      setUnreadMessages(totalUnread);
     }
-  }, []);
+  }, [chats, user]);
 
-  const handleNewMessage = useCallback((newMessage: any) => {
-    if (!user) return;
-    
-    if (newMessage && (newMessage.sender_id === user.id || newMessage.receiver_id === user.id)) {
-      const formattedMessage: Message = {
-        id: newMessage.id,
-        senderId: newMessage.sender_id,
-        receiverId: newMessage.receiver_id,
-        content: newMessage.content,
-        read: newMessage.read || false,
-        createdAt: new Date(newMessage.created_at)
-      };
-      
-      setMessages(prevMessages => {
-        if (prevMessages.some(m => m.id === formattedMessage.id)) {
-          return prevMessages;
-        }
-        return [...prevMessages, formattedMessage];
-      });
-      
-      updateChatWithLastMessage(formattedMessage);
-      
-      if (newMessage.receiver_id === user.id && newMessage.sender_id !== user.id) {
-        const sender = users.find(u => u.id === newMessage.sender_id);
-        toast(`New message from ${sender?.displayName || sender?.username || 'Someone'}`);
-      }
-    }
-  }, [user, users]);
-
-  const handleMessageUpdate = useCallback((updatedMessage: any) => {
-    if (!user) return;
-    
-    setMessages(prevMessages => 
-      prevMessages.map(msg => 
-        msg.id === updatedMessage.id
-          ? {
-              ...msg,
-              read: updatedMessage.read,
-              content: updatedMessage.content
-            }
-          : msg
-      )
-    );
-  }, [user]);
-
-  const fetchUsers = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (profilesError) {
-        console.error('Error fetching profiles from Supabase:', profilesError);
-        throw profilesError;
-      }
-      
-      if (profilesData && profilesData.length > 0) {
-        const formattedUsers = profilesData.map((profile: any) => ({
-          id: profile.id,
-          username: profile.username || 'user',
-          displayName: profile.username || 'User',
-          avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-          createdAt: new Date(profile.updated_at || new Date()),
-          bio: profile.bio || '',
-          isPro: profile.is_pro || false
-        }));
-        
-        setUsers(formattedUsers);
-      }
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
-  };
-
-  const fetchChats = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: chatsData, error: chatsError } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`participant1.eq.${user.id},participant2.eq.${user.id}`);
-      
-      if (chatsError) {
-        console.error('Error fetching chats from Supabase:', chatsError);
-        throw chatsError;
-      }
-      
-      if (chatsData && chatsData.length > 0) {
-        const formattedChats = chatsData.map((chat: any) => {
-          const otherParticipantId = chat.participant1 === user.id ? chat.participant2 : chat.participant1;
-          return {
-            id: chat.id,
-            participants: [user.id, otherParticipantId],
-            lastMessage: chat.last_message || '',
-            lastMessageDate: chat.last_message_date ? new Date(chat.last_message_date) : undefined,
-            unreadCount: chat.unread_count || 0
-          };
-        });
-        
-        setChats(formattedChats);
-        await fetchMessages();
-      }
-    } catch (error) {
-      console.error('Error fetching chats:', error);
-      throw error;
-    }
-  };
-
-  const fetchMessages = async () => {
-    if (!user) return;
-    
-    try {
-      const { data: messagesData, error: messagesError } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-        .order('created_at', { ascending: true });
-      
-      if (messagesError) {
-        console.error('Error fetching messages from Supabase:', messagesError);
-        throw messagesError;
-      }
-      
-      const formattedMessages = messagesData.map((message: any) => ({
-        id: message.id,
-        senderId: message.sender_id,
-        receiverId: message.receiver_id,
-        content: message.content,
-        read: message.read || false,
-        createdAt: new Date(message.created_at)
-      }));
-      
-      setMessages(formattedMessages);
-    } catch (error) {
-      console.error('Error fetching messages:', error);
-      throw error;
-    }
-  };
-
-  const updateChatWithLastMessage = useCallback((message: Message) => {
-    setChats(prevChats => {
-      const existingChat = prevChats.find(c => 
-        c.participants.includes(message.senderId) && 
-        c.participants.includes(message.receiverId)
-      );
-      
-      if (existingChat) {
-        return prevChats.map(c => 
-          c.id === existingChat.id 
-            ? { 
-                ...c, 
-                lastMessage: message.content, 
-                lastMessageDate: message.createdAt,
-                unreadCount: message.receiverId === user?.id && !message.read 
-                  ? c.unreadCount + 1 
-                  : c.unreadCount
-              } 
-            : c
-        );
-      } else {
-        const newChatId = Date.now().toString();
-        const newChat: Chat = {
-          id: newChatId,
-          participants: [message.senderId, message.receiverId],
-          lastMessage: message.content,
-          lastMessageDate: message.createdAt,
-          unreadCount: message.receiverId === user?.id && !message.read ? 1 : 0
-        };
-        
-        return [...prevChats, newChat];
-      }
-    });
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (activeChat) {
-      const chatMessages = messages.filter(message => {
-        const chat = chats.find(c => c.id === activeChat);
-        if (!chat) return false;
-        
-        return chat.participants.includes(message.senderId) && 
-               chat.participants.includes(message.receiverId);
-      });
-      
-      setFilteredMessages(chatMessages);
-      
-      if (user) {
-        const unreadMessages = messages.filter(msg => 
-          msg.receiverId === user.id && 
-          !msg.read && 
-          chats.find(c => c.id === activeChat)?.participants.includes(msg.senderId)
-        );
-        
-        if (unreadMessages.length > 0) {
-          setMessages(prevMessages => 
-            prevMessages.map(msg => 
-              unreadMessages.some(unread => unread.id === msg.id)
-                ? { ...msg, read: true }
-                : msg
-            )
-          );
-          
-          unreadMessages.forEach(async (msg) => {
-            try {
-              await supabase
-                .from('messages')
-                .update({ read: true })
-                .eq('id', msg.id);
-            } catch (error) {
-              console.error('Error updating message read status:', error);
-            }
-          });
-          
-          setChats(prevChats => 
-            prevChats.map(chat => 
-              chat.id === activeChat 
-                ? { ...chat, unreadCount: 0 }
-                : chat
-            )
-          );
-        }
-      }
-    } else {
-      setFilteredMessages([]);
-    }
-  }, [activeChat, messages, chats, user]);
-
+  // Message sending wrapper
   const sendMessage = async (content: string) => {
-    if (!user || !activeChat || !content.trim()) {
-      if (!content.trim()) {
-        toast.error("Cannot send empty message");
-      } else {
-        toast.error("Cannot send message");
-      }
-      return;
-    }
-
-    const chat = chats.find(c => c.id === activeChat);
-    if (!chat) return;
-
-    const receiver = chat.participants.find(id => id !== user.id);
-    if (!receiver) return;
-
-    const messageId = uuidv4();
-    const newMessage: Message = {
-      id: messageId,
-      senderId: user.id,
-      receiverId: receiver,
-      content,
-      read: false,
-      createdAt: new Date()
-    };
-
-    setIsSending(true);
-
+    if (!content.trim() || !activeChat) return;
+    
     try {
-      setMessages(prev => [...prev, newMessage]);
-      updateChatWithLastMessage(newMessage);
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          id: newMessage.id,
-          sender_id: newMessage.senderId,
-          receiver_id: newMessage.receiverId,
-          content: newMessage.content,
-          read: newMessage.read,
-          created_at: newMessage.createdAt.toISOString()
-        })
-        .select();
-      
-      if (error) {
-        throw error;
-      }
-      
-      const chatToUpdate = chats.find(c => 
-        c.participants.includes(user.id) && 
-        c.participants.includes(receiver)
-      );
-      
-      if (chatToUpdate) {
-        await supabase
-          .from('chats')
-          .update({
-            last_message: content,
-            last_message_date: new Date().toISOString()
-          })
-          .eq('id', chatToUpdate.id);
-      } else {
-        await supabase
-          .from('chats')
-          .insert({
-            id: chat.id,
-            participant1: user.id,
-            participant2: receiver,
-            last_message: content,
-            last_message_date: new Date().toISOString(),
-            unread_count: 0
-          });
-      }
+      setIsSending(true);
+      await chatSendMessage(content);
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error("Failed to send message. Retrying...");
-      
-      setTimeout(async () => {
-        try {
-          const { error: retryError } = await supabase
-            .from('messages')
-            .insert({
-              id: newMessage.id,
-              sender_id: newMessage.senderId,
-              receiver_id: newMessage.receiverId,
-              content: newMessage.content,
-              read: newMessage.read,
-              created_at: newMessage.createdAt.toISOString()
-            });
-            
-          if (retryError) {
-            throw retryError;
-          }
-          
-          toast.success("Message sent successfully");
-        } catch (retryErr) {
-          console.error('Error sending message (retry):', retryErr);
-          toast.error("Failed to send message. Please try again later.");
-          
-          setMessages(prev => prev.filter(m => m.id !== newMessage.id));
-          
-          const originalChat = chats.find(c => c.id === activeChat);
-          if (originalChat) {
-            setChats(prev => 
-              prev.map(c => 
-                c.id === activeChat ? originalChat : c
-              )
-            );
-          }
-        }
-      }, 2000);
+      toast.error("Failed to send message");
     } finally {
       setIsSending(false);
     }
   };
 
-  const startNewChat = useCallback(async (userId: string) => {
-    if (!user) {
-      toast.error("You must be logged in to start a chat");
-      return null;
-    }
+  // Connection status check
+  useEffect(() => {
+    const checkConnection = () => {
+      setIsConnected(navigator.onLine);
+    };
 
-    try {
-      const { data: existingChats } = await supabase
-        .from('chats')
-        .select('*')
-        .or(`and(participant1.eq.${user.id},participant2.eq.${userId}),and(participant1.eq.${userId},participant2.eq.${user.id})`)
-        .limit(1);
-
-      if (existingChats && existingChats.length > 0) {
-        setActiveChat(existingChats[0].id);
-        return existingChats[0].id;
-      }
-
-      const newChatId = uuidv4();
-      const { data, error } = await supabase
-        .from('chats')
-        .insert({
-          id: newChatId,
-          participant1: user.id,
-          participant2: userId,
-          created_at: new Date().toISOString(),
-          unread_count: 0
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating chat:", error);
-        toast.error("Failed to create chat");
-        return null;
-      }
-
-      const newChat: Chat = {
-        id: data.id,
-        participants: [data.participant1, data.participant2],
-        lastMessage: null,
-        lastMessageDate: null,
-        unreadCount: 0
-      };
-
-      setChats(prev => [...prev, newChat]);
-      setActiveChat(newChat.id);
-      
-      return newChat.id;
-    } catch (error) {
-      console.error("Error in startNewChat:", error);
-      toast.error("Failed to start chat");
-      return null;
-    }
-  }, [user, setActiveChat]);
-
-  const getUserById = useCallback(async (userId: string): Promise<User | null> => {
-    if (!userId) return null;
+    window.addEventListener('online', () => setIsConnected(true));
+    window.addEventListener('offline', () => setIsConnected(false));
     
-    const cachedUser = users.find(u => u.id === userId);
-    if (cachedUser) return cachedUser;
+    checkConnection();
     
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        const newUser = {
-          id: data.id,
-          username: data.username || 'user',
-          displayName: data.username || 'User',
-          avatar: data.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-          isPro: data.is_pro || false,
-          bio: data.bio || '',
-          createdAt: new Date(data.updated_at || new Date())
-        };
-        
-        setUsers(prev => [...prev.filter(u => u.id !== newUser.id), newUser]);
-        
-        return newUser;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting user by ID:', error);
-      return null;
-    }
-  }, [users]);
+    return () => {
+      window.removeEventListener('online', () => setIsConnected(true));
+      window.removeEventListener('offline', () => setIsConnected(false));
+    };
+  }, []);
 
-  const getSuggestedUsers = async (): Promise<User[]> => {
-    if (!user) return [];
-    
-    try {
-      const { data: profilesData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', user.id);
-      
-      if (error) {
-        console.error('Error fetching profiles from Supabase:', error);
-        return [];
-      }
-      
-      if (profilesData && profilesData.length > 0) {
-        return profilesData.map((profile: any) => ({
-          id: profile.id,
-          username: profile.username || 'user',
-          displayName: profile.username || 'User',
-          avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-          createdAt: new Date(profile.updated_at || new Date()),
-          bio: profile.bio || '',
-          isPro: profile.is_pro || false
-        }));
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Error in getSuggestedUsers:', error);
-      return [];
-    }
-  };
-
-  const registerUser = async (newUser: User) => {
-    if (!newUser.id || !newUser.username) {
-      console.error("Invalid user data");
+  const reconnect = useCallback(() => {
+    if (!navigator.onLine) {
+      toast.error("No internet connection");
       return;
     }
     
-    const existingUser = users.find(u => u.id === newUser.id);
-    if (existingUser) {
-      return;
-    }
+    toast.loading("Reconnecting...");
     
-    setUsers(prevUsers => [...prevUsers, newUser]);
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .upsert({
-          id: newUser.id,
-          username: newUser.username,
-          avatar_url: newUser.avatar,
-          updated_at: new Date().toISOString()
-        });
-      
-      if (error) throw error;
-      
-      toast.success(`${newUser.displayName || newUser.username} added to chat system`);
-    } catch (error) {
-      console.error('Error registering user in Supabase:', error);
-      toast.error(`Failed to register ${newUser.username} in the system`);
-    }
-  };
-
-  const getFriends = async (): Promise<User[]> => {
-    if (!user) return [];
-    
-    try {
-      const { data: friendsData, error } = await supabase
-        .from('friends')
-        .select('friend_id')
-        .eq('user_id', user.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (!friendsData || friendsData.length === 0) {
-        return [];
-      }
-      
-      const friendIds = friendsData.map(f => f.friend_id);
-      const friendUsers: User[] = [];
-      
-      for (const friendId of friendIds) {
-        const friendUser = await getUserById(friendId);
-        if (friendUser) {
-          friendUsers.push(friendUser);
-        }
-      }
-      
-      return friendUsers;
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-      return [];
-    }
-  };
+    setTimeout(() => {
+      setIsConnected(true);
+      toast.success("Reconnected successfully");
+    }, 1000);
+  }, []);
 
   return {
     chats,
-    messages: filteredMessages,
-    allMessages: messages,
+    messages,
     activeChat,
-    isLoading,
-    isSending,
-    isConnected,
     setActiveChat,
     sendMessage,
     startNewChat,
@@ -701,8 +79,9 @@ export const useMessaging = () => {
     getUserById,
     registerUser,
     getFriends,
-    reconnect: () => setReconnectAttempt(prev => prev + 1)
+    isSending,
+    isConnected,
+    reconnect,
+    unreadMessages
   };
 };
-
-export default useMessaging;
