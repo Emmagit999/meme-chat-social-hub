@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { User, Message, Chat } from "@/types";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 
 export const useMessaging = () => {
   const { user } = useAuth();
@@ -127,13 +127,13 @@ export const useMessaging = () => {
         }, 3000);
       });
     
-    messagesChannel.subscribe((status, error, payload) => {
+    messagesChannel.subscribe((status: REALTIME_SUBSCRIBE_STATES, err?: Error) => {
       if (status === 'SUBSCRIBED') {
         setIsConnected(true);
         console.log('Realtime subscription active');
       } else if (status === 'CHANNEL_ERROR') {
         setIsConnected(false);
-        console.error('Realtime subscription failed', error, payload);
+        console.error('Realtime subscription failed', err);
       }
     });
     
