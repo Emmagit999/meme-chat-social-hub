@@ -14,17 +14,22 @@ const PostDetailPage: React.FC = () => {
   
   const post = posts.find(p => p.id === postId);
   
+  useEffect(() => {
+    // Scroll to top when the component mounts
+    window.scrollTo(0, 0);
+  }, []);
+
   if (isLoading) {
     return (
-      <div className="container py-6 flex justify-center">
-        <div className="animate-pulse-subtle text-lg">Loading...</div>
+      <div className="container py-16 flex justify-center">
+        <div className="animate-pulse text-lg">Loading post...</div>
       </div>
     );
   }
   
   if (!post) {
     return (
-      <div className="container py-6">
+      <div className="container py-16 mb-20 md:mb-0">
         <Button 
           variant="ghost"
           className="mb-4 flex items-center gap-2"
@@ -42,7 +47,7 @@ const PostDetailPage: React.FC = () => {
   }
   
   return (
-    <div className="container py-6 max-w-3xl">
+    <div className="container py-16 pb-24 md:pb-16 max-w-2xl mb-16 md:mb-0">
       <Button 
         variant="ghost"
         className="mb-4 flex items-center gap-2"

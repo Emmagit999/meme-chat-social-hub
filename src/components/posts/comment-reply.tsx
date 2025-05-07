@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { Reply, ThumbsUp } from "lucide-react";
+import { Reply } from "lucide-react";
 import { CommentReply } from "@/types";
 import { useAuth } from "@/context/auth-context";
+import { Link } from 'react-router-dom';
 
 interface CommentReplyProps {
   reply: CommentReply;
@@ -13,26 +14,44 @@ interface CommentReplyProps {
 }
 
 export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike }) => {
+  const [isLiking, setIsLiking] = useState(false);
+
+  const handleLike = () => {
+    onLike();
+    setIsLiking(true);
+    setTimeout(() => setIsLiking(false), 1000);
+  };
+
   return (
     <div className="pl-10 mt-2">
       <div className="flex items-start gap-2">
-        <Avatar className="h-6 w-6">
-          <AvatarImage src={reply.userAvatar} alt={reply.username} />
-          <AvatarFallback>{reply.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link to={`/profile/${reply.userId}`}>
+          <Avatar className="h-6 w-6">
+            <AvatarImage src={reply.userAvatar} alt={reply.username} />
+            <AvatarFallback>{reply.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1 bg-secondary rounded-lg p-2">
           <div className="flex justify-between items-start">
             <div>
-              <span className="font-medium text-sm">{reply.username}</span>
+              <Link to={`/profile/${reply.userId}`} className="font-medium text-sm hover:underline">
+                {reply.username}
+              </Link>
               <p className="text-sm">{reply.content}</p>
             </div>
           </div>
           <div className="flex gap-3 mt-1">
             <button 
               className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
-              onClick={onLike}
+              onClick={handleLike}
             >
-              <ThumbsUp className="h-3 w-3" />
+              <span 
+                className={`text-xs ${isLiking ? 'animate-bounce' : ''}`} 
+                role="img" 
+                aria-label="laugh"
+              >
+                😂
+              </span>
               <span>{reply.likes > 0 && reply.likes}</span>
             </button>
             <span className="text-xs text-muted-foreground">
@@ -66,10 +85,12 @@ export const CommentReplyForm: React.FC<{
   return (
     <div className="pl-10 mt-2">
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <Avatar className="h-6 w-6 flex-shrink-0">
-          <AvatarImage src={user.avatar} alt={user.username} />
-          <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link to={`/profile/${user.id}`}>
+          <Avatar className="h-6 w-6 flex-shrink-0">
+            <AvatarImage src={user.avatar} alt={user.username} />
+            <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </Link>
         <input 
           type="text"
           value={content}

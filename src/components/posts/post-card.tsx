@@ -1,11 +1,11 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
 import { useData } from "@/context/data-context";
-import { MessageCircle, ThumbsUp, Share2 } from "lucide-react";
+import { MessageCircle, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -32,10 +32,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const location = useLocation();
+  const [isLiked, setIsLiked] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const handleLike = () => {
     if (user) {
       likePost(post.id);
+      setIsLiked(true);
+      setIsAnimating(true);
+      setTimeout(() => setIsAnimating(false), 1000);
     }
   };
 
@@ -136,7 +141,13 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
             onClick={handleLike}
             aria-label="Like post"
           >
-            <ThumbsUp size={18} />
+            <span 
+              className={`text-xl ${isAnimating ? 'animate-bounce' : ''}`} 
+              role="img" 
+              aria-label="laugh"
+            >
+              😂
+            </span>
             <span className="font-medium">{post.likes}</span>
           </button>
           

@@ -1,12 +1,14 @@
+
 import React from 'react';
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Home, Search, Users, Bell, MessageCircle } from "lucide-react";
+import { Home, Search, Users, Bell, MessageCircle, User } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { UserMenu } from "@/components/layout/user-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationBadge from '../ui/notification-badge';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useMessaging } from '@/hooks/use-messaging';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -45,8 +47,32 @@ export const Navbar = () => {
       label: 'Notifications',
       icon: <Bell className="h-5 w-5" />,
       activeIcon: <Bell className="h-5 w-5 text-yellow-500" />,
-    },
+    }
   ];
+  
+  // Add profile link for mobile
+  if (isMobile && user) {
+    navigationItems.push({
+      path: `/profile/${user.id}`,
+      label: 'Profile',
+      icon: user && user.avatar ? (
+        <Avatar className="h-5 w-5 border border-yellow-500/30">
+          <AvatarImage src={user.avatar} alt={user.username} className="h-5 w-5" />
+          <AvatarFallback className="h-5 w-5 text-xs">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      ) : (
+        <User className="h-5 w-5" />
+      ),
+      activeIcon: user && user.avatar ? (
+        <Avatar className="h-5 w-5 border border-yellow-500">
+          <AvatarImage src={user.avatar} alt={user.username} className="h-5 w-5" />
+          <AvatarFallback className="h-5 w-5 text-xs text-yellow-500">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      ) : (
+        <User className="h-5 w-5 text-yellow-500" />
+      )
+    });
+  }
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-auto bg-gray-900 border-t md:border-t-0 md:border-b border-gray-800 z-10">
@@ -114,4 +140,3 @@ const NavItem = ({ path, label, icon, activeIcon, isMobile, badge = 0 }: NavItem
     </button>
   );
 };
-

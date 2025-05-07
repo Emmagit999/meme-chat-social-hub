@@ -6,8 +6,9 @@ import { useAuth } from "@/context/auth-context";
 import { useData } from "@/context/data-context";
 import { Comment } from "@/types";
 import { formatDistanceToNow } from "date-fns";
-import { Reply, ThumbsUp } from "lucide-react";
+import { Reply } from "lucide-react";
 import { CommentReplyItem, CommentReplyForm } from './comment-reply';
+import { Link } from 'react-router-dom';
 
 interface CommentItemProps {
   comment: Comment;
@@ -17,6 +18,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   const [isReplying, setIsReplying] = useState(false);
   const { likeComment, addCommentReply, likeCommentReply } = useData();
   const { user } = useAuth();
+  const [isLiking, setIsLiking] = useState(false);
 
   if (!user) return null;
 
@@ -31,26 +33,42 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
     setIsReplying(false);
   };
 
+  const handleLikeComment = () => {
+    likeComment(comment.id);
+    setIsLiking(true);
+    setTimeout(() => setIsLiking(false), 1000);
+  };
+
   return (
     <div>
       <div className="flex items-start gap-2">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={comment.userAvatar} alt={comment.username} />
-          <AvatarFallback>{comment.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link to={`/profile/${comment.userId}`}>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={comment.userAvatar} alt={comment.username} />
+            <AvatarFallback>{comment.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-1 bg-secondary rounded-lg p-3">
           <div className="flex justify-between items-start">
             <div>
-              <span className="font-medium">{comment.username}</span>
+              <Link to={`/profile/${comment.userId}`} className="font-medium hover:underline">
+                {comment.username}
+              </Link>
               <p>{comment.content}</p>
             </div>
           </div>
           <div className="flex gap-4 mt-2">
             <button 
               className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
-              onClick={() => likeComment(comment.id)}
+              onClick={handleLikeComment}
             >
-              <ThumbsUp className="h-4 w-4" />
+              <span 
+                className={`text-sm ${isLiking ? 'animate-bounce' : ''}`} 
+                role="img" 
+                aria-label="laugh"
+              >
+                😂
+              </span>
               <span>{comment.likes > 0 && comment.likes}</span>
             </button>
             <button 
@@ -130,10 +148,12 @@ export const CommentForm: React.FC<{
 
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 mt-4">
-      <Avatar className="h-8 w-8 flex-shrink-0">
-        <AvatarImage src={user.avatar} alt={user.username} />
-        <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <Link to={`/profile/${user.id}`}>
+        <Avatar className="h-8 w-8 flex-shrink-0">
+          <AvatarImage src={user.avatar} alt={user.username} />
+          <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </Link>
       <input 
         type="text"
         value={content}

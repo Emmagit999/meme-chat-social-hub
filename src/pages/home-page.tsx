@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/posts/post-card";
 import { CreatePostForm } from "@/components/posts/create-post-form";
@@ -26,7 +26,7 @@ const HomePage: React.FC = () => {
     : posts.filter(post => post.type === activeFilter);
 
   return (
-    <div className="container py-6">
+    <div className="container py-16 pb-24 md:pb-16">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <h1 className="text-2xl font-bold">Home Feed</h1>
         
@@ -50,7 +50,7 @@ const HomePage: React.FC = () => {
       
       {isLoading ? (
         <div className="flex justify-center py-10">
-          <div className="animate-pulse-subtle text-lg">Loading...</div>
+          <div className="animate-pulse text-lg">Loading posts...</div>
         </div>
       ) : filteredPosts.length === 0 ? (
         <div className="text-center py-10">
@@ -64,9 +64,11 @@ const HomePage: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
           {filteredPosts.map(post => (
-            <PostCard key={post.id} post={post} />
+            <div key={post.id} className="flex flex-col h-full max-h-[600px] md:max-h-[500px]">
+              <PostCard post={post} className="h-full" />
+            </div>
           ))}
         </div>
       )}
@@ -77,7 +79,7 @@ const HomePage: React.FC = () => {
       />
       
       <Button
-        className="fixed right-4 bottom-4 rounded-full w-14 h-14 bg-memeGreen hover:bg-memeGreen/90 shadow-lg md:hidden"
+        className="fixed right-4 bottom-20 md:bottom-4 rounded-full w-14 h-14 bg-memeGreen hover:bg-memeGreen/90 shadow-lg md:hidden"
         onClick={() => setIsCreatePostOpen(true)}
       >
         <Plus className="h-6 w-6" />
