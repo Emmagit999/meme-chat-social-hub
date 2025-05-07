@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Reply } from "lucide-react";
 import { CommentReply } from "@/types";
 import { useAuth } from "@/context/auth-context";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 interface CommentReplyProps {
   reply: CommentReply;
@@ -15,28 +15,36 @@ interface CommentReplyProps {
 
 export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike }) => {
   const [isLiking, setIsLiking] = useState(false);
+  const navigate = useNavigate();
 
   const handleLike = () => {
     onLike();
     setIsLiking(true);
     setTimeout(() => setIsLiking(false), 1000);
   };
+  
+  const handleProfileClick = (userId: string) => {
+    navigate(`/profile/${userId}`);
+  };
 
   return (
     <div className="pl-10 mt-2">
       <div className="flex items-start gap-2">
-        <Link to={`/profile/${reply.userId}`}>
+        <div onClick={() => handleProfileClick(reply.userId)} className="cursor-pointer">
           <Avatar className="h-6 w-6">
             <AvatarImage src={reply.userAvatar} alt={reply.username} />
             <AvatarFallback>{reply.username.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-        </Link>
+        </div>
         <div className="flex-1 bg-secondary rounded-lg p-2">
           <div className="flex justify-between items-start">
             <div>
-              <Link to={`/profile/${reply.userId}`} className="font-medium text-sm hover:underline">
+              <div 
+                onClick={() => handleProfileClick(reply.userId)} 
+                className="font-medium text-sm hover:underline cursor-pointer"
+              >
                 {reply.username}
-              </Link>
+              </div>
               <p className="text-sm">{reply.content}</p>
             </div>
           </div>

@@ -25,6 +25,18 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
+  // Prevent more than one video from playing simultaneously
+  const hasVideoCount = filteredPosts.filter(post => post.video).length;
+  const limitedVideoPosts = hasVideoCount > 1 
+    ? filteredPosts.map((post, index) => {
+        // Only allow the first video post to have its video
+        if (post.video && index > 0) {
+          return { ...post, video: undefined };
+        }
+        return post;
+      })
+    : filteredPosts;
+
   return (
     <div className="container py-16 pb-24 md:pb-16">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -52,7 +64,7 @@ const HomePage: React.FC = () => {
         <div className="flex justify-center py-10">
           <div className="animate-pulse text-lg">Loading posts...</div>
         </div>
-      ) : filteredPosts.length === 0 ? (
+      ) : limitedVideoPosts.length === 0 ? (
         <div className="text-center py-10">
           <h2 className="text-xl mb-2">No posts yet</h2>
           <p className="text-muted-foreground mb-4">Be the first to post!</p>
@@ -65,7 +77,7 @@ const HomePage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {filteredPosts.map(post => (
+          {limitedVideoPosts.map(post => (
             <div key={post.id} className="flex flex-col h-full max-h-[600px] md:max-h-[500px]">
               <PostCard post={post} className="h-full" />
             </div>

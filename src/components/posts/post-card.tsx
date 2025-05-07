@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
@@ -32,16 +32,24 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
   const handleLike = () => {
     if (user) {
+      // Toggle like state
+      setIsLiked(!isLiked);
       likePost(post.id);
-      setIsLiked(true);
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 1000);
     }
+  };
+  
+  const handleUserProfile = (e: React.MouseEvent, userId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigate(`/profile/${userId}`);
   };
 
   // Handle video play/pause when visible/not visible in viewport
@@ -89,16 +97,19 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
         {/* Header with user info and post type tag */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <Link to={`/profile/${post.userId}`}>
-              <Avatar className="h-10 w-10 border border-yellow-500/30">
+            <div onClick={(e) => handleUserProfile(e, post.userId)}>
+              <Avatar className="h-10 w-10 border border-yellow-500/30 cursor-pointer">
                 <AvatarImage src={post.userAvatar} />
                 <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
-            </Link>
+            </div>
             <div>
-              <Link to={`/profile/${post.userId}`} className="font-medium text-yellow-500 hover:underline">
+              <div 
+                onClick={(e) => handleUserProfile(e, post.userId)}
+                className="font-medium text-yellow-500 hover:underline cursor-pointer"
+              >
                 {post.username}
-              </Link>
+              </div>
               <p className="text-xs text-gray-400">
                 {formatDistanceToNow(post.createdAt)} ago
               </p>
@@ -115,14 +126,14 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
         <p className="text-white mb-4">{post.content}</p>
         
         {post.image && (
-          <img src={post.image} alt="Post" className="w-full rounded-md mb-4" />
+          <img src={post.image} alt="Post" className="w-full rounded-md mb-4 object-contain max-h-[400px]" />
         )}
         
         {post.video && (
           <video 
             ref={videoRef}
             controls
-            className="w-full rounded-md mb-4"
+            className="w-full rounded-md mb-4 object-contain max-h-[400px]"
             playsInline
             preload="metadata"
             loop
