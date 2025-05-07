@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
-import { Reply } from "lucide-react";
 import { CommentReply } from "@/types";
 import { useAuth } from "@/context/auth-context";
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface CommentReplyProps {
   reply: CommentReply;
@@ -14,25 +13,33 @@ interface CommentReplyProps {
 }
 
 export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike }) => {
+  const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
   const [localLikeCount, setLocalLikeCount] = useState(reply.likes);
   const navigate = useNavigate();
 
   const handleLike = () => {
-    onLike();
+    setIsLiked(!isLiked);
+    setLocalLikeCount(prev => isLiked ? Math.max(0, prev - 1) : prev + 1);
     setIsLiking(true);
-    setLocalLikeCount(prev => prev + 1);
     setTimeout(() => setIsLiking(false), 1000);
+    onLike();
   };
   
-  const handleProfileClick = (userId: string) => {
-    navigate(`/profile/${userId}`);
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Navigate directly to user profile
+    navigate(`/profile/${reply.userId}`);
   };
 
   return (
     <div className="pl-10 mt-2">
       <div className="flex items-start gap-2">
-        <div onClick={() => handleProfileClick(reply.userId)} className="cursor-pointer">
+        <div 
+          onClick={handleProfileClick} 
+          className="cursor-pointer"
+        >
           <Avatar className="h-6 w-6">
             <AvatarImage src={reply.userAvatar} alt={reply.username} />
             <AvatarFallback>{reply.username.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -42,7 +49,7 @@ export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike })
           <div className="flex justify-between items-start">
             <div>
               <div 
-                onClick={() => handleProfileClick(reply.userId)} 
+                onClick={handleProfileClick} 
                 className="font-medium text-sm hover:underline cursor-pointer"
               >
                 {reply.username}
@@ -52,7 +59,7 @@ export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike })
           </div>
           <div className="flex gap-3 mt-1">
             <button 
-              className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"
+              className={`text-xs flex items-center gap-1 hover:text-foreground ${isLiked ? 'text-foreground' : 'text-muted-foreground'}`}
               onClick={handleLike}
             >
               <span 
@@ -81,6 +88,7 @@ export const CommentReplyForm: React.FC<{
 }> = ({ commentId, onAddReply, onCancel }) => {
   const [content, setContent] = useState('');
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -91,16 +99,21 @@ export const CommentReplyForm: React.FC<{
     onAddReply(content);
     setContent('');
   };
+  
+  const handleProfileClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(`/profile/${user.id}`);
+  };
 
   return (
     <div className="pl-10 mt-2">
       <form onSubmit={handleSubmit} className="flex gap-2">
-        <Link to={`/profile/${user.id}`}>
+        <div onClick={handleProfileClick} className="cursor-pointer">
           <Avatar className="h-6 w-6 flex-shrink-0">
             <AvatarImage src={user.avatar} alt={user.username} />
             <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
-        </Link>
+        </div>
         <input 
           type="text"
           value={content}

@@ -5,7 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
 import { useData } from "@/context/data-context";
-import { MessageCircle, Share2 } from "lucide-react";
+import { MessageCircle, Share2, Trash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -25,40 +25,62 @@ interface PostCardProps {
   };
   className?: string;
   hideCommentLink?: boolean;
+  showDeleteButton?: boolean;
+  onDelete?: (postId: string) => void;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, className, hideCommentLink = false }) => {
-  const { likePost } = useData();
+export const PostCard: React.FC<PostCardProps> = ({ 
+  post, 
+  className, 
+  hideCommentLink = false,
+  showDeleteButton = false,
+  onDelete
+}) => {
+  const { likePost, isPostLiked, likedPosts } = useData();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const location = useLocation();
   const navigate = useNavigate();
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(() => isPostLiked(post.id));
   const [isAnimating, setIsAnimating] = useState(false);
   const [localLikeCount, setLocalLikeCount] = useState(post.likes);
 
+  // Update isLiked whenever likedPosts changes
+  useEffect(() => {
+    setIsLiked(isPostLiked(post.id));
+  }, [likedPosts, post.id, isPostLiked]);
+
   const handleLike = () => {
-    if (user) {
-      // Toggle like state
-      setIsLiked(!isLiked);
-      
-      // Update local like count
-      const newLikeCount = isLiked ? localLikeCount - 1 : localLikeCount + 1;
-      setLocalLikeCount(newLikeCount);
-      
-      // Animate emoji
-      setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 1000);
-      
-      // Call API to update like in database
-      likePost(post.id);
-    }
+    if (!user) return;
+    
+    // Toggle like state
+    const newIsLiked = !isLiked;
+    setIsLiked(newIsLiked);
+    
+    // Update local like count
+    const newLikeCount = newIsLiked ? localLikeCount + 1 : Math.max(0, localLikeCount - 1);
+    setLocalLikeCount(newLikeCount);
+    
+    // Animate emoji
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 1000);
+    
+    // Call API to update like in database
+    likePost(post.id);
   };
   
-  const handleUserProfile = (e: React.MouseEvent, userId: string) => {
+  const handleUserProfile = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    navigate(`/profile/${userId}`);
+    // Navigate directly to the user's profile page
+    navigate(`/profile/${post.userId}`);
+  };
+
+  const handleDeletePost = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onDelete) {
+      onDelete(post.id);
+    }
   };
 
   // Handle video play/pause when visible/not visible in viewport
@@ -115,7 +137,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
         {/* Header with user info and post type tag */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div onClick={(e) => handleUserProfile(e, post.userId)}>
+            <div 
+              onClick={handleUserProfile}
+              className="cursor-pointer"
+            >
               <Avatar className="h-10 w-10 border border-yellow-500/30 cursor-pointer">
                 <AvatarImage src={post.userAvatar} />
                 <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
@@ -123,7 +148,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
             </div>
             <div>
               <div 
-                onClick={(e) => handleUserProfile(e, post.userId)}
+                onClick={handleUserProfile}
                 className="font-medium text-yellow-500 hover:underline cursor-pointer"
               >
                 {post.username}
@@ -166,9 +191,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
       <div className="flex items-center justify-between p-4 border-t border-gray-800 text-gray-400">
         <div className="flex items-center gap-4">
           <button 
-            className="flex items-center gap-2 hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
+            className={`flex items-center gap-2 transition-colors p-2 rounded-full hover:bg-gray-800 ${isLiked ? 'text-yellow-500' : 'hover:text-yellow-500 text-gray-400'}`}
             onClick={handleLike}
-            aria-label="Like post"
+            aria-label={isLiked ? "Unlike post" : "Like post"}
           >
             <span 
               className={`text-xl ${isAnimating ? 'animate-bounce' : ''}`} 
@@ -196,12 +221,23 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
           )}
         </div>
         
-        <button 
-          className="hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
-          aria-label="Share post"
-        >
-          <Share2 size={18} />
-        </button>
+        <div className="flex items-center">
+          {showDeleteButton && user && post.userId === user.id && (
+            <button 
+              className="hover:text-red-500 transition-colors p-2 rounded-full hover:bg-gray-800 mr-2"
+              onClick={handleDeletePost}
+              aria-label="Delete post"
+            >
+              <Trash size={18} />
+            </button>
+          )}
+          <button 
+            className="hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
+            aria-label="Share post"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );

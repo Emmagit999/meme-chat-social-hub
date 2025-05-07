@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
 import { toast } from "sonner";
@@ -116,12 +116,23 @@ export const usePosts = () => {
             : post
         ));
       })
+      .on('postgres_changes', { 
+        event: 'DELETE', 
+        schema: 'public', 
+        table: 'posts'
+      }, (payload) => {
+        // Remove the deleted post from the list
+        const deletedPostId = payload.old?.id;
+        if (deletedPostId) {
+          setPosts(prev => prev.filter(post => post.id !== deletedPostId));
+        }
+      })
       .subscribe();
       
     return () => {
       supabase.removeChannel(postsChannel);
     };
-  }, [user]);
+  }, [user, addNotification]);
 
   const addPost = async (postData: Omit<Post, 'id' | 'likes' | 'comments' | 'createdAt'>) => {
     if (!user) {
@@ -172,6 +183,37 @@ export const usePosts = () => {
     } catch (error) {
       console.error('Error creating post:', error);
       toast.error("Failed to create post");
+    }
+  };
+  
+  const deletePost = async (postId: string) => {
+    if (!user) {
+      toast.error("You must be logged in to delete a post");
+      return;
+    }
+    
+    try {
+      // Check if the post belongs to the current user
+      const post = posts.find(p => p.id === postId);
+      if (!post || post.userId !== user.id) {
+        toast.error("You can only delete your own posts");
+        return;
+      }
+      
+      // Delete the post
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+        
+      if (error) throw error;
+      
+      // Remove from local state
+      setPosts(prev => prev.filter(p => p.id !== postId));
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      toast.error("Failed to delete post");
+      throw error;
     }
   };
 
@@ -297,13 +339,22 @@ export const usePosts = () => {
     }
   };
 
-  const getUserPosts = (userId: string): Post[] => {
+  const getUserPosts = useCallback((userId: string): Post[] => {
     return posts.filter(post => post.userId === userId);
-  };
+  }, [posts]);
 
-  const isPostLiked = (postId: string): boolean => {
+  const isPostLiked = useCallback((postId: string): boolean => {
     return likedPosts.includes(postId);
-  };
+  }, [likedPosts]);
 
-  return { posts, isLoading, addPost, likePost, getUserPosts, isPostLiked, likedPosts };
+  return { 
+    posts, 
+    isLoading, 
+    addPost, 
+    deletePost,
+    likePost, 
+    getUserPosts, 
+    isPostLiked, 
+    likedPosts 
+  };
 };

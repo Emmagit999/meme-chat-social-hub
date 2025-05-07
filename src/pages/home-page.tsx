@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/posts/post-card";
@@ -24,13 +25,13 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // Make sure only one video can play at a time
-  // First video gets to keep its video, all others get video property removed
+  // Make sure only one video can play at a time by setting videoEnabled to false
+  // for all but the first video post
   const postsWithLimitedVideos = filteredPosts.map((post, index) => {
     // Find the first post with a video
     const firstVideoIndex = filteredPosts.findIndex(p => p.video);
     
-    // If this post has a video and it's not the first video, remove the video
+    // If this post has a video and it's not the first video, remove the video property
     if (post.video && index !== firstVideoIndex && firstVideoIndex !== -1) {
       return { ...post, video: undefined };
     }

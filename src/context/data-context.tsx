@@ -9,6 +9,7 @@ type DataContextType = {
   comments: Comment[];
   isLoading: boolean;
   addPost: (post: Omit<Post, 'id' | 'likes' | 'comments' | 'createdAt'>) => void;
+  deletePost: (postId: string) => Promise<void>;
   likePost: (postId: string) => void;
   addComment: (comment: Omit<Comment, 'id' | 'likes' | 'createdAt' | 'replies'>) => void;
   likeComment: (commentId: string) => void;
@@ -23,7 +24,17 @@ type DataContextType = {
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { posts, isLoading: postsLoading, addPost, likePost, getUserPosts, isPostLiked, likedPosts } = usePosts();
+  const { 
+    posts, 
+    isLoading: postsLoading, 
+    addPost,
+    deletePost,
+    likePost, 
+    getUserPosts, 
+    isPostLiked, 
+    likedPosts 
+  } = usePosts();
+  
   const { 
     comments, 
     isLoading: commentsLoading, 
@@ -40,6 +51,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       comments,
       isLoading: postsLoading || commentsLoading,
       addPost,
+      deletePost,
       likePost,
       addComment,
       likeComment,
