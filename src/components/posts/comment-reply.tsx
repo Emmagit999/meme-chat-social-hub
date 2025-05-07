@@ -15,11 +15,13 @@ interface CommentReplyProps {
 
 export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike }) => {
   const [isLiking, setIsLiking] = useState(false);
+  const [localLikeCount, setLocalLikeCount] = useState(reply.likes);
   const navigate = useNavigate();
 
   const handleLike = () => {
     onLike();
     setIsLiking(true);
+    setLocalLikeCount(prev => prev + 1);
     setTimeout(() => setIsLiking(false), 1000);
   };
   
@@ -60,7 +62,7 @@ export const CommentReplyItem: React.FC<CommentReplyProps> = ({ reply, onLike })
               >
                 😂
               </span>
-              <span>{reply.likes > 0 && reply.likes}</span>
+              <span>{localLikeCount > 0 && localLikeCount}</span>
             </button>
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(reply.createdAt, { addSuffix: true })}

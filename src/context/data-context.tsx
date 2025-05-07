@@ -16,12 +16,14 @@ type DataContextType = {
   likeCommentReply: (commentId: string, replyId: string) => void;
   getPostComments: (postId: string) => Comment[];
   getUserPosts: (userId: string) => Post[];
+  isPostLiked: (postId: string) => boolean;
+  likedPosts: string[];
 };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { posts, isLoading: postsLoading, addPost, likePost } = usePosts();
+  const { posts, isLoading: postsLoading, addPost, likePost, getUserPosts, isPostLiked, likedPosts } = usePosts();
   const { 
     comments, 
     isLoading: commentsLoading, 
@@ -31,10 +33,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     likeCommentReply,
     getPostComments 
   } = useComments();
-  
-  const getUserPosts = (userId: string): Post[] => {
-    return posts.filter(post => post.userId === userId);
-  };
 
   return (
     <DataContext.Provider value={{ 
@@ -48,7 +46,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addCommentReply,
       likeCommentReply,
       getPostComments,
-      getUserPosts
+      getUserPosts,
+      isPostLiked,
+      likedPosts
     }}>
       {children}
     </DataContext.Provider>

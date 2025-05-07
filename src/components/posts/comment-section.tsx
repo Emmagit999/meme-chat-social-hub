@@ -19,6 +19,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   const { likeComment, addCommentReply, likeCommentReply } = useData();
   const { user } = useAuth();
   const [isLiking, setIsLiking] = useState(false);
+  const [localLikeCount, setLocalLikeCount] = useState(comment.likes);
   const navigate = useNavigate();
 
   if (!user) return null;
@@ -35,9 +36,13 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   };
 
   const handleLikeComment = () => {
-    likeComment(comment.id);
+    // Toggle like state locally
     setIsLiking(true);
+    setLocalLikeCount(prev => prev + 1);
     setTimeout(() => setIsLiking(false), 1000);
+    
+    // Update in database
+    likeComment(comment.id);
   };
   
   const handleProfileClick = (userId: string) => {
@@ -77,7 +82,7 @@ export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
               >
                 😂
               </span>
-              <span>{comment.likes > 0 && comment.likes}</span>
+              <span>{localLikeCount > 0 && localLikeCount}</span>
             </button>
             <button 
               className="text-xs text-muted-foreground flex items-center gap-1 hover:text-foreground"

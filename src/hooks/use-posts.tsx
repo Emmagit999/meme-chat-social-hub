@@ -9,6 +9,7 @@ import { useNotifications } from './use-notifications';
 export const usePosts = () => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [likedPosts, setLikedPosts] = useState<string[]>([]);
   const { user } = useAuth();
   const { addNotification } = useNotifications();
 
@@ -45,6 +46,26 @@ export const usePosts = () => {
     };
 
     loadPosts();
+
+    // Load user's liked posts
+    const loadLikedPosts = async () => {
+      if (!user) return;
+
+      try {
+        const { data: likedPostsData, error: likedError } = await supabase
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', user.id);
+
+        if (!likedError && likedPostsData) {
+          setLikedPosts(likedPostsData.map(like => like.post_id));
+        }
+      } catch (error) {
+        console.error('Error loading liked posts:', error);
+      }
+    };
+
+    loadLikedPosts();
 
     // Set up real-time updates for posts
     const postsChannel = supabase
@@ -100,7 +121,7 @@ export const usePosts = () => {
     return () => {
       supabase.removeChannel(postsChannel);
     };
-  }, []);
+  }, [user]);
 
   const addPost = async (postData: Omit<Post, 'id' | 'likes' | 'comments' | 'createdAt'>) => {
     if (!user) {
@@ -160,72 +181,119 @@ export const usePosts = () => {
       return;
     }
 
+    const isAlreadyLiked = likedPosts.includes(postId);
+
     try {
-      // Optimistically update UI
-      setPosts(prev => 
-        prev.map(post => 
-          post.id === postId 
-            ? { ...post, likes: post.likes + 1 } 
-            : post
-        )
-      );
-
-      // Get post info for notification
-      const postToLike = posts.find(p => p.id === postId);
-      
-      // Update likes in database
-      const { error } = await supabase
-        .from('posts')
-        .update({ likes: posts.find(p => p.id === postId)?.likes + 1 || 1 })
-        .eq('id', postId);
-
-      if (error) throw error;
-
-      // Record the like in post_likes table
-      const { error: likeError } = await supabase
-        .from('post_likes')
-        .insert({
-          user_id: user.id,
-          post_id: postId
-        });
-
-      if (likeError) throw likeError;
-      
-      // Add notification for the post owner if it's not the current user
-      if (postToLike && postToLike.userId !== user.id) {
-        addNotification({
-          type: 'like',
-          from: user.username,
-          fromUserId: user.id,
-          avatar: user.avatar || '',
-          content: `liked your ${postToLike.type}`,
-          read: false
-        });
+      if (isAlreadyLiked) {
+        // Unlike the post
+        setLikedPosts(prev => prev.filter(id => id !== postId));
         
-        // Create notification in database
-        await supabase.from('notifications').insert({
-          user_id: postToLike.userId,
-          type: 'like',
-          from_username: user.username,
-          from_user_id: user.id,
-          avatar: user.avatar,
-          content: `liked your ${postToLike.type}`,
-          read: false
-        });
+        // Update likes count in UI
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes: Math.max(0, post.likes - 1) } 
+              : post
+          )
+        );
+
+        // Delete like record from database
+        const { error } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', postId);
+
+        if (error) throw error;
+
+        // Update post likes count in database
+        const updatedLikes = Math.max(0, posts.find(p => p.id === postId)?.likes - 1 || 0);
+        await supabase
+          .from('posts')
+          .update({ likes: updatedLikes })
+          .eq('id', postId);
+
+      } else {
+        // Like the post
+        setLikedPosts(prev => [...prev, postId]);
+        
+        // Update likes count in UI (optimistic update)
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes: post.likes + 1 } 
+              : post
+          )
+        );
+
+        // Get post info for notification
+        const postToLike = posts.find(p => p.id === postId);
+        
+        // Update likes in database
+        const { error } = await supabase
+          .from('posts')
+          .update({ likes: posts.find(p => p.id === postId)?.likes + 1 || 1 })
+          .eq('id', postId);
+
+        if (error) throw error;
+
+        // Record the like in post_likes table
+        const { error: likeError } = await supabase
+          .from('post_likes')
+          .insert({
+            user_id: user.id,
+            post_id: postId
+          });
+
+        if (likeError) throw likeError;
+        
+        // Add notification for the post owner if it's not the current user
+        if (postToLike && postToLike.userId !== user.id) {
+          addNotification({
+            type: 'like',
+            from: user.username,
+            fromUserId: user.id,
+            avatar: user.avatar || '',
+            content: `liked your ${postToLike.type}`,
+            read: false
+          });
+          
+          // Create notification in database
+          await supabase.from('notifications').insert({
+            user_id: postToLike.userId,
+            type: 'like',
+            from_username: user.username,
+            from_user_id: user.id,
+            avatar: user.avatar,
+            content: `liked your ${postToLike.type}`,
+            read: false
+          });
+        }
       }
-      
     } catch (error) {
-      console.error('Error liking post:', error);
-      toast.error("Failed to like post");
+      console.error('Error toggling post like:', error);
+      toast.error("Failed to update like status");
       
       // Revert optimistic update
-      setPosts(prev => 
-        prev.map(post => 
-          post.id === postId 
-            ? { ...post, likes: post.likes - 1 } 
-            : post
-        )
-      );
+      if (isAlreadyLiked) {
+        setLikedPosts(prev => [...prev, postId]);
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes: post.likes + 1 } 
+              : post
+          )
+        );
+      } else {
+        setLikedPosts(prev => prev.filter(id => id !== postId));
+        setPosts(prev => 
+          prev.map(post => 
+            post.id === postId 
+              ? { ...post, likes: Math.max(0, post.likes - 1) } 
+              : post
+          )
+        );
+      }
     }
   };
 
@@ -233,5 +301,9 @@ export const usePosts = () => {
     return posts.filter(post => post.userId === userId);
   };
 
-  return { posts, isLoading, addPost, likePost, getUserPosts };
+  const isPostLiked = (postId: string): boolean => {
+    return likedPosts.includes(postId);
+  };
+
+  return { posts, isLoading, addPost, likePost, getUserPosts, isPostLiked, likedPosts };
 };

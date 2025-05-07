@@ -35,14 +35,23 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [localLikeCount, setLocalLikeCount] = useState(post.likes);
 
   const handleLike = () => {
     if (user) {
       // Toggle like state
       setIsLiked(!isLiked);
-      likePost(post.id);
+      
+      // Update local like count
+      const newLikeCount = isLiked ? localLikeCount - 1 : localLikeCount + 1;
+      setLocalLikeCount(newLikeCount);
+      
+      // Animate emoji
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 1000);
+      
+      // Call API to update like in database
+      likePost(post.id);
     }
   };
   
@@ -77,6 +86,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
       }
     };
   }, []);
+
+  // Make sure videos are properly sized
+  useEffect(() => {
+    if (videoRef.current && post.video) {
+      videoRef.current.style.objectFit = 'contain';
+      videoRef.current.style.maxHeight = '400px';
+      videoRef.current.style.margin = '0 auto';
+    }
+  }, [post.video]);
 
   const getPostTypeBadgeStyles = () => {
     switch (post.type) {
@@ -159,7 +177,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, className, hideComment
             >
               😂
             </span>
-            <span className="font-medium">{post.likes}</span>
+            <span className="font-medium">{localLikeCount}</span>
           </button>
           
           {hideCommentLink ? (
