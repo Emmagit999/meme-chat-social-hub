@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from 'date-fns';
@@ -48,6 +48,11 @@ export const PostCard: React.FC<PostCardProps> = ({
   useEffect(() => {
     setIsLiked(isPostLiked(post.id));
   }, [likedPosts, post.id, isPostLiked]);
+
+  // Update localLikeCount when post.likes changes
+  useEffect(() => {
+    setLocalLikeCount(post.likes);
+  }, [post.likes]);
 
   const handleLike = () => {
     if (!user) return;
@@ -112,8 +117,10 @@ export const PostCard: React.FC<PostCardProps> = ({
   // Make sure videos are properly sized
   useEffect(() => {
     if (videoRef.current && post.video) {
-      videoRef.current.style.objectFit = 'contain';
+      videoRef.current.style.width = '100%';
+      videoRef.current.style.height = 'auto';
       videoRef.current.style.maxHeight = '400px';
+      videoRef.current.style.objectFit = 'contain';
       videoRef.current.style.margin = '0 auto';
     }
   }, [post.video]);
@@ -176,7 +183,7 @@ export const PostCard: React.FC<PostCardProps> = ({
           <video 
             ref={videoRef}
             controls
-            className="w-full rounded-md mb-4 object-contain max-h-[400px]"
+            className="w-full rounded-md mb-4"
             playsInline
             preload="metadata"
             loop

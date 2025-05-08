@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/auth-context";
@@ -8,7 +8,7 @@ import { Comment } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { Reply } from "lucide-react";
 import { CommentReplyItem, CommentReplyForm } from './comment-reply';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface CommentItemProps {
   comment: Comment;
@@ -16,7 +16,7 @@ interface CommentItemProps {
 
 export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   const [isReplying, setIsReplying] = useState(false);
-  const { likeComment, addCommentReply, likeCommentReply } = useData();
+  const { likeComment, addCommentReply } = useData();
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);

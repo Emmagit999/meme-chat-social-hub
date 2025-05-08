@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
@@ -13,59 +12,73 @@ export const usePosts = () => {
   const { user } = useAuth();
   const { addNotification } = useNotifications();
 
+  // Function to load posts from the database
+  const loadPosts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { data: postsData, error: postsError } = await supabase
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (postsError) throw postsError;
+
+      setPosts(postsData?.map(post => ({
+        id: post.id,
+        userId: post.user_id,
+        username: post.username || 'anonymous',
+        userAvatar: post.user_avatar || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+        content: post.content,
+        image: post.image,
+        video: post.video,
+        likes: post.likes || 0,
+        comments: post.comments || 0,
+        createdAt: new Date(post.created_at),
+        type: post.type as 'meme' | 'roast' | 'joke'
+      })) || []);
+      
+      return postsData;
+    } catch (error) {
+      console.error('Error loading posts:', error);
+      toast.error('Failed to load posts');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Function to load user's liked posts
+  const loadLikedPosts = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data: likedPostsData, error: likedError } = await supabase
+        .from('post_likes')
+        .select('post_id')
+        .eq('user_id', user.id);
+
+      if (!likedError && likedPostsData) {
+        setLikedPosts(likedPostsData.map(like => like.post_id));
+      }
+      
+      return likedPostsData;
+    } catch (error) {
+      console.error('Error loading liked posts:', error);
+      return null;
+    }
+  }, [user]);
+
+  // Public function to refresh posts data
+  const refreshPosts = useCallback(async () => {
+    const results = await Promise.all([
+      loadPosts(),
+      loadLikedPosts()
+    ]);
+    return results;
+  }, [loadPosts, loadLikedPosts]);
+
   useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        setIsLoading(true);
-        const { data: postsData, error: postsError } = await supabase
-          .from('posts')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (postsError) throw postsError;
-
-        setPosts(postsData?.map(post => ({
-          id: post.id,
-          userId: post.user_id,
-          username: post.username || 'anonymous',
-          userAvatar: post.user_avatar || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-          content: post.content,
-          image: post.image,
-          video: post.video,
-          likes: post.likes || 0,
-          comments: post.comments || 0,
-          createdAt: new Date(post.created_at),
-          type: post.type as 'meme' | 'roast' | 'joke'
-        })) || []);
-      } catch (error) {
-        console.error('Error loading posts:', error);
-        toast.error('Failed to load posts');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadPosts();
-
-    // Load user's liked posts
-    const loadLikedPosts = async () => {
-      if (!user) return;
-
-      try {
-        const { data: likedPostsData, error: likedError } = await supabase
-          .from('post_likes')
-          .select('post_id')
-          .eq('user_id', user.id);
-
-        if (!likedError && likedPostsData) {
-          setLikedPosts(likedPostsData.map(like => like.post_id));
-        }
-      } catch (error) {
-        console.error('Error loading liked posts:', error);
-      }
-    };
-
-    loadLikedPosts();
+    refreshPosts();
 
     // Set up real-time updates for posts
     const postsChannel = supabase
@@ -111,7 +124,8 @@ export const usePosts = () => {
                 video: updatedPost.video,
                 likes: updatedPost.likes || 0,
                 comments: updatedPost.comments || 0,
-                type: updatedPost.type as 'meme' | 'roast' | 'joke'
+                type: updatedPost.type as 'meme' | 'roast' | 'joke',
+                userAvatar: updatedPost.user_avatar || post.userAvatar,
               } 
             : post
         ));
@@ -132,7 +146,7 @@ export const usePosts = () => {
     return () => {
       supabase.removeChannel(postsChannel);
     };
-  }, [user, addNotification]);
+  }, [refreshPosts]);
 
   const addPost = async (postData: Omit<Post, 'id' | 'likes' | 'comments' | 'createdAt'>) => {
     if (!user) {
@@ -355,6 +369,7 @@ export const usePosts = () => {
     likePost, 
     getUserPosts, 
     isPostLiked, 
-    likedPosts 
+    likedPosts,
+    refreshPosts 
   };
 };

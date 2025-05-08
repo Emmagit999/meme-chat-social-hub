@@ -1,8 +1,11 @@
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Post, Comment, CommentReply } from '@/types';
 import { usePosts } from '@/hooks/use-posts';
 import { useComments } from '@/hooks/use-comments';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { RefreshCcw } from 'lucide-react';
 
 type DataContextType = {
   posts: Post[];
@@ -19,6 +22,8 @@ type DataContextType = {
   getUserPosts: (userId: string) => Post[];
   isPostLiked: (postId: string) => boolean;
   likedPosts: string[];
+  refreshData: () => void;
+  lastRefresh: Date;
 };
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -32,7 +37,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     likePost, 
     getUserPosts, 
     isPostLiked, 
-    likedPosts 
+    likedPosts,
+    refreshPosts
   } = usePosts();
   
   const { 
@@ -42,8 +48,76 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     likeComment,
     addCommentReply,
     likeCommentReply,
-    getPostComments 
+    getPostComments,
+    refreshComments
   } = useComments();
+
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+
+  // Function to refresh all data
+  const refreshData = () => {
+    toast.loading('Refreshing data...', {
+      icon: <RefreshCcw className="animate-spin" />
+    });
+    
+    Promise.all([
+      refreshPosts(),
+      refreshComments()
+    ])
+      .then(() => {
+        setLastRefresh(new Date());
+        toast.success('Data refreshed successfully!');
+      })
+      .catch(() => {
+        toast.error('Failed to refresh data');
+      });
+  };
+
+  // Set up real-time listeners for updates
+  useEffect(() => {
+    // Listen for changes in posts table
+    const postsChannel = supabase
+      .channel('public:posts')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'posts' },
+        () => {
+          // Silently refresh posts when there are changes
+          refreshPosts();
+        }
+      )
+      .subscribe();
+
+    // Listen for changes in comments table
+    const commentsChannel = supabase
+      .channel('public:comments')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comments' },
+        () => {
+          // Silently refresh comments when there are changes
+          refreshComments();
+        }
+      )
+      .subscribe();
+
+    // Listen for changes in comment_replies table
+    const repliesChannel = supabase
+      .channel('public:replies')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_replies' },
+        () => {
+          // Silently refresh comments when there are replies changes
+          refreshComments();
+        }
+      )
+      .subscribe();
+
+    // Clean up subscriptions
+    return () => {
+      supabase.removeChannel(postsChannel);
+      supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(repliesChannel);
+    };
+  }, [refreshPosts, refreshComments]);
 
   return (
     <DataContext.Provider value={{ 
@@ -60,7 +134,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       getPostComments,
       getUserPosts,
       isPostLiked,
-      likedPosts
+      likedPosts,
+      refreshData,
+      lastRefresh
     }}>
       {children}
     </DataContext.Provider>

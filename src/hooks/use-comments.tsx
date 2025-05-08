@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Comment, CommentReply } from "@/types";
@@ -10,54 +9,87 @@ export const useComments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    const loadComments = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('comments')
-          .select('*, comment_replies(*)')
-          .order('created_at', { ascending: false });
+  // Function to load comments from database
+  const loadComments = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*, comment_replies(*)')
+        .order('created_at', { ascending: false });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        if (data) {
-          const formattedComments: Comment[] = data.map(comment => {
-            const replies = comment.comment_replies ? comment.comment_replies.map((reply: any) => ({
-              id: reply.id,
-              commentId: reply.comment_id,
-              userId: reply.user_id,
-              username: reply.username,
-              userAvatar: reply.user_avatar,
-              content: reply.content,
-              likes: reply.likes || 0,
-              createdAt: new Date(reply.created_at)
-            })) : [];
+      if (data) {
+        const formattedComments: Comment[] = data.map(comment => {
+          const replies = comment.comment_replies ? comment.comment_replies.map((reply: any) => ({
+            id: reply.id,
+            commentId: reply.comment_id,
+            userId: reply.user_id,
+            username: reply.username,
+            userAvatar: reply.user_avatar,
+            content: reply.content,
+            likes: reply.likes || 0,
+            createdAt: new Date(reply.created_at)
+          })) : [];
 
-            return {
-              id: comment.id,
-              postId: comment.post_id,
-              userId: comment.user_id,
-              username: comment.username,
-              userAvatar: comment.user_avatar,
-              content: comment.content,
-              likes: comment.likes || 0,
-              replies: replies,
-              createdAt: new Date(comment.created_at)
-            };
-          });
+          return {
+            id: comment.id,
+            postId: comment.post_id,
+            userId: comment.user_id,
+            username: comment.username,
+            userAvatar: comment.user_avatar,
+            content: comment.content,
+            likes: comment.likes || 0,
+            replies: replies,
+            createdAt: new Date(comment.created_at)
+          };
+        });
 
-          setComments(formattedComments);
-        }
-      } catch (error) {
-        console.error('Error loading comments:', error);
-        toast.error('Failed to load comments');
-      } finally {
-        setIsLoading(false);
+        setComments(formattedComments);
+        return formattedComments;
       }
-    };
-
-    loadComments();
+      return null;
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      toast.error('Failed to load comments');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Public function to refresh comments
+  const refreshComments = useCallback(async () => {
+    return await loadComments();
+  }, [loadComments]);
+
+  useEffect(() => {
+    loadComments();
+    
+    // Set up real-time listeners for comments and replies
+    const commentsChannel = supabase
+      .channel('comments-channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'comments' },
+        () => {
+          // Refresh comments when there are changes
+          loadComments();
+        }
+      )
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'comment_replies' },
+        () => {
+          // Refresh comments when there are changes to replies
+          loadComments();
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(commentsChannel);
+    };
+  }, [loadComments]);
 
   const addComment = useCallback(async (comment: Omit<Comment, 'id' | 'likes' | 'createdAt' | 'replies'>) => {
     if (!user) {
@@ -293,6 +325,7 @@ export const useComments = () => {
     likeComment,
     addCommentReply,
     likeCommentReply,
-    getPostComments
+    getPostComments,
+    refreshComments
   };
 };

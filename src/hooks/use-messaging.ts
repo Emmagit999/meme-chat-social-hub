@@ -1,9 +1,9 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
 import { User, Message, Chat } from "@/types";
 import { toast } from "sonner";
-import { v4 as uuidv4 } from 'uuid';
 import { useChat } from "@/hooks/use-chat";
 
 export const useMessaging = () => {
@@ -22,7 +22,36 @@ export const useMessaging = () => {
     }
   }, [chats, user]);
 
-  // Message sending wrapper
+  // Set up real-time listeners for messages
+  useEffect(() => {
+    if (!user) return;
+
+    const messagesChannel = supabase
+      .channel('messages-channel')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
+        () => {
+          // Refresh messages when the user receives a new message
+          if (chatSendMessage) {
+            const refreshChats = async () => {
+              try {
+                await getFriends();
+              } catch (error) {
+                console.error('Error refreshing chats:', error);
+              }
+            };
+            refreshChats();
+          }
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(messagesChannel);
+    };
+  }, [user, chatSendMessage, getFriends]);
+
+  // Message sending wrapper with optimistic update
   const sendMessage = async (content: string) => {
     if (!content.trim() || !activeChat) return;
     
@@ -62,11 +91,24 @@ export const useMessaging = () => {
     
     toast.loading("Reconnecting...");
     
+    // Simulate reconnection
     setTimeout(() => {
       setIsConnected(true);
       toast.success("Reconnected successfully");
+      
+      // Refresh data
+      if (getFriends) {
+        getFriends();
+      }
     }, 1000);
-  }, []);
+  }, [getFriends]);
+
+  // Set loading state to false once we have data
+  useEffect(() => {
+    if (chats !== undefined) {
+      setIsLoading(false);
+    }
+  }, [chats]);
 
   return {
     chats,

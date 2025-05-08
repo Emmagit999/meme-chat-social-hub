@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +41,16 @@ const ProfilePage: React.FC = () => {
         if (!profileId) {
           // If no profileId, we're viewing the current user's profile
           if (user) {
-            setProfileUser(user);
+            const userWithCreatedAt: User = {
+              id: user.id,
+              username: user.username,
+              displayName: user.username,
+              avatar: user.avatar || "",
+              bio: user.bio || "",
+              isPro: user.isPro || false,
+              createdAt: new Date() // Add a default createdAt value
+            };
+            setProfileUser(userWithCreatedAt);
             setBio(user.bio || "");
             setAvatar(user.avatar);
           }
@@ -55,13 +65,14 @@ const ProfilePage: React.FC = () => {
           if (error) throw error;
           
           if (data) {
-            const profileData = {
+            const profileData: User = {
               id: data.id,
               username: data.username || "",
               displayName: data.username || "",
               avatar: data.avatar_url || "",
               bio: data.bio || "",
-              isPro: data.is_pro || false
+              isPro: data.is_pro || false,
+              createdAt: new Date(data.updated_at || Date.now()) // Use updated_at as createdAt or current date as fallback
             };
             setProfileUser(profileData);
             setBio(profileData.bio || "");

@@ -4,15 +4,16 @@ import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/posts/post-card";
 import { CreatePostForm } from "@/components/posts/create-post-form";
 import { useData } from "@/context/data-context";
-import { Plus, Filter } from "lucide-react";
+import { Plus, RefreshCcw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 const HomePage: React.FC = () => {
-  const { posts, isLoading } = useData();
+  const { posts, isLoading, refreshData } = useData();
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke'>('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const isMobile = useIsMobile();
   const { requestPermission } = usePushNotifications();
   
@@ -20,6 +21,22 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     requestPermission();
   }, [requestPermission]);
+
+  // Set up automatic refresh every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      refreshData();
+    }, 30000); // refresh every 30 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [refreshData]);
+  
+  // Handle manual refresh
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    refreshData();
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
   
   const filteredPosts = activeFilter === 'all' 
     ? posts 
@@ -41,7 +58,19 @@ const HomePage: React.FC = () => {
   return (
     <div className="container py-16 pb-24 md:pb-16">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <h1 className="text-2xl font-bold">Home Feed</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Home Feed</h1>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="rounded-full"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
+        </div>
         
         <div className="flex items-center gap-4 flex-wrap">
           <ToggleGroup type="single" value={activeFilter} onValueChange={(value) => value && setActiveFilter(value as any)}>

@@ -5,11 +5,11 @@ import { useData } from '@/context/data-context';
 import { PostCard } from '@/components/posts/post-card';
 import { CommentSection } from '@/components/posts/comment-section';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, RefreshCcw } from 'lucide-react';
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
-  const { posts, isLoading } = useData();
+  const { posts, isLoading, refreshData } = useData();
   const navigate = useNavigate();
   
   const post = posts.find(p => p.id === postId);
@@ -18,6 +18,21 @@ const PostDetailPage: React.FC = () => {
     // Scroll to top when the component mounts
     window.scrollTo(0, 0);
   }, []);
+
+  // Set up auto-refresh 
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      if (postId) {
+        refreshData();
+      }
+    }, 15000); // refresh every 15 seconds
+    
+    return () => clearInterval(refreshInterval);
+  }, [refreshData, postId]);
+
+  const handleRefresh = () => {
+    refreshData();
+  };
 
   if (isLoading) {
     return (
@@ -48,14 +63,26 @@ const PostDetailPage: React.FC = () => {
   
   return (
     <div className="container py-16 pb-24 md:pb-16 max-w-2xl mb-16 md:mb-0">
-      <Button 
-        variant="ghost"
-        className="mb-4 flex items-center gap-2"
-        onClick={() => navigate(-1)}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        <span>Back</span>
-      </Button>
+      <div className="flex justify-between items-center mb-4">
+        <Button 
+          variant="ghost"
+          className="flex items-center gap-2"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back</span>
+        </Button>
+        
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="rounded-full"
+          onClick={handleRefresh}
+          aria-label="Refresh post"
+        >
+          <RefreshCcw className="h-5 w-5" />
+        </Button>
+      </div>
       
       <div className="mb-6">
         <PostCard post={post} hideCommentLink />
