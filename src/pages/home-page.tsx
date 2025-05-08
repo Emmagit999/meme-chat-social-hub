@@ -14,6 +14,8 @@ const HomePage: React.FC = () => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [connectionIssue, setConnectionIssue] = useState(false);
   const isMobile = useIsMobile();
   const { requestPermission } = usePushNotifications();
   
@@ -22,13 +24,57 @@ const HomePage: React.FC = () => {
     requestPermission();
   }, [requestPermission]);
 
-  // Set up automatic refresh every 30 seconds
+  // Monitor connection status
   useEffect(() => {
-    const refreshInterval = setInterval(() => {
+    const handleOnline = () => {
+      setConnectionIssue(false);
+      // When connection comes back, do a silent refresh
       refreshData();
-    }, 30000); // refresh every 30 seconds
+    };
     
-    return () => clearInterval(refreshInterval);
+    const handleOffline = () => {
+      setConnectionIssue(true);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Check initial connection state
+    setConnectionIssue(!navigator.onLine);
+    
+    // Periodic check for unstable connections
+    const connectionCheck = setInterval(() => {
+      if (navigator.onLine) {
+        // Check if we can reach the server
+        fetch('/api/ping')
+          .then(() => setConnectionIssue(false))
+          .catch(() => setConnectionIssue(true));
+      } else {
+        setConnectionIssue(true);
+      }
+    }, 60000); // Check every minute
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(connectionCheck);
+    };
+  }, [refreshData]);
+
+  // Intelligent refresh - only refresh when the tab becomes visible after being hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && document.hidden === false) {
+        // User has come back to the tab - do a silent refresh
+        refreshData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [refreshData]);
   
   // Handle manual refresh
@@ -42,18 +88,8 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // Make sure only one video can play at a time by setting videoEnabled to false
-  // for all but the first video post
-  const postsWithLimitedVideos = filteredPosts.map((post, index) => {
-    // Find the first post with a video
-    const firstVideoIndex = filteredPosts.findIndex(p => p.video);
-    
-    // If this post has a video and it's not the first video, remove the video property
-    if (post.video && index !== firstVideoIndex && firstVideoIndex !== -1) {
-      return { ...post, video: undefined };
-    }
-    return post;
-  });
+  // We're not limiting videos anymore, all videos will be playable when in view
+  const postsWithVideos = filteredPosts;
 
   return (
     <div className="container py-16 pb-24 md:pb-16">
@@ -63,13 +99,16 @@ const HomePage: React.FC = () => {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="rounded-full"
+            className={`rounded-full ${connectionIssue ? 'text-red-500' : ''}`}
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isAutoRefreshing}
           >
-            <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-5 w-5 ${isRefreshing || isAutoRefreshing ? 'animate-spin' : ''}`} />
             <span className="sr-only">Refresh</span>
           </Button>
+          {connectionIssue && (
+            <span className="text-xs text-red-500">Connection issues detected</span>
+          )}
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
@@ -94,7 +133,7 @@ const HomePage: React.FC = () => {
         <div className="flex justify-center py-10">
           <div className="animate-pulse text-lg">Loading posts...</div>
         </div>
-      ) : postsWithLimitedVideos.length === 0 ? (
+      ) : postsWithVideos.length === 0 ? (
         <div className="text-center py-10">
           <h2 className="text-xl mb-2">No posts yet</h2>
           <p className="text-muted-foreground mb-4">Be the first to post!</p>
@@ -107,7 +146,7 @@ const HomePage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {postsWithLimitedVideos.map(post => (
+          {postsWithVideos.map(post => (
             <div key={post.id} className="flex flex-col h-full max-h-[600px] md:max-h-[500px]">
               <PostCard post={post} className="h-full" />
             </div>

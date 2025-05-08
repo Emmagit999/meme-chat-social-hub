@@ -88,15 +88,23 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // Handle video play/pause when visible/not visible in viewport
+  // Enhanced Intersection Observer for videos - play when in view
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !post.video) return;
     
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            videoRef.current?.play().catch(e => console.log("Video play error:", e));
+            videoRef.current?.play().catch(e => {
+              // Handle autoplay restrictions by muting the video first
+              if (videoRef.current) {
+                videoRef.current.muted = true;
+                videoRef.current.play().catch(err => 
+                  console.log("Video play error:", err)
+                );
+              }
+            });
           } else {
             videoRef.current?.pause();
           }
@@ -112,7 +120,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         observer.unobserve(videoRef.current);
       }
     };
-  }, []);
+  }, [post.video]);
 
   // Make sure videos are properly sized
   useEffect(() => {

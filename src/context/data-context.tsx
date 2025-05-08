@@ -53,12 +53,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } = useComments();
 
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Function to refresh all data
   const refreshData = () => {
-    toast.loading('Refreshing data...', {
-      icon: <RefreshCcw className="animate-spin" />
-    });
+    if (isRefreshing) return; // Prevent multiple simultaneous refreshes
+    
+    setIsRefreshing(true);
+    
+    // For UI feedback on refresh operations that take longer than 500ms
+    const refreshTimer = setTimeout(() => {
+      toast.loading('Refreshing data...', {
+        icon: <RefreshCcw className="animate-spin" />
+      });
+    }, 500);
     
     Promise.all([
       refreshPosts(),
@@ -66,22 +74,43 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ])
       .then(() => {
         setLastRefresh(new Date());
-        toast.success('Data refreshed successfully!');
+        clearTimeout(refreshTimer);
+        // Only show success notification for explicit refreshes
+        toast.success('Data refreshed successfully!', { duration: 1500 });
       })
       .catch(() => {
+        clearTimeout(refreshTimer);
         toast.error('Failed to refresh data');
+      })
+      .finally(() => {
+        setIsRefreshing(false);
       });
   };
 
   // Set up real-time listeners for updates
   useEffect(() => {
+    // Configure Supabase real-time
+    const enableRealtimeForTable = async (table: string) => {
+      try {
+        // Enable REPLICA IDENTITY FULL for the table
+        await supabase.rpc('enable_realtime', { table_name: table });
+      } catch (error) {
+        console.error(`Error enabling realtime for ${table}:`, error);
+      }
+    };
+    
+    // Try to enable realtime for critical tables
+    enableRealtimeForTable('posts');
+    enableRealtimeForTable('comments');
+    enableRealtimeForTable('comment_replies');
+    
     // Listen for changes in posts table
     const postsChannel = supabase
       .channel('public:posts')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'posts' },
-        () => {
-          // Silently refresh posts when there are changes
+        (payload) => {
+          console.log('Posts change detected:', payload);
           refreshPosts();
         }
       )
@@ -92,8 +121,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .channel('public:comments')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'comments' },
-        () => {
-          // Silently refresh comments when there are changes
+        (payload) => {
+          console.log('Comments change detected:', payload);
           refreshComments();
         }
       )
@@ -104,8 +133,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .channel('public:replies')
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'comment_replies' },
-        () => {
-          // Silently refresh comments when there are replies changes
+        (payload) => {
+          console.log('Replies change detected:', payload);
           refreshComments();
         }
       )

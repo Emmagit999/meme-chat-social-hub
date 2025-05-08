@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,8 +42,8 @@ const ProfilePage: React.FC = () => {
           if (user) {
             const userWithCreatedAt: User = {
               id: user.id,
-              username: user.username,
-              displayName: user.username,
+              username: user.username || '',
+              displayName: user.username || '',
               avatar: user.avatar || "",
               bio: user.bio || "",
               isPro: user.isPro || false,
