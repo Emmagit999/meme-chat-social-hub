@@ -14,7 +14,6 @@ const HomePage: React.FC = () => {
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
   const isMobile = useIsMobile();
   const { requestPermission } = usePushNotifications();
@@ -24,12 +23,14 @@ const HomePage: React.FC = () => {
     requestPermission();
   }, [requestPermission]);
 
-  // Monitor connection status
+  // Monitor connection status - more subtle approach
   useEffect(() => {
     const handleOnline = () => {
-      setConnectionIssue(false);
-      // When connection comes back, do a silent refresh
-      refreshData();
+      if (connectionIssue) {
+        setConnectionIssue(false);
+        // When connection comes back, do a silent refresh
+        refreshData();
+      }
     };
     
     const handleOffline = () => {
@@ -42,31 +43,44 @@ const HomePage: React.FC = () => {
     // Check initial connection state
     setConnectionIssue(!navigator.onLine);
     
-    // Periodic check for unstable connections
+    // Periodic check for unstable connections - less frequent and more quiet
     const connectionCheck = setInterval(() => {
       if (navigator.onLine) {
-        // Check if we can reach the server
-        fetch('/api/ping')
-          .then(() => setConnectionIssue(false))
-          .catch(() => setConnectionIssue(true));
+        // Only check the server if we previously had connection issues
+        if (connectionIssue) {
+          fetch('/api/ping')
+            .then(() => {
+              setConnectionIssue(false);
+              refreshData();
+            })
+            .catch(() => setConnectionIssue(true));
+        }
       } else {
         setConnectionIssue(true);
       }
-    }, 60000); // Check every minute
+    }, 120000); // Check every 2 minutes instead of every minute
     
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       clearInterval(connectionCheck);
     };
-  }, [refreshData]);
+  }, [refreshData, connectionIssue]);
 
-  // Intelligent refresh - only refresh when the tab becomes visible after being hidden
+  // Intelligent refresh - only refresh when the tab becomes visible after being hidden for a while
   useEffect(() => {
+    let lastVisibilityChange = Date.now();
+    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && document.hidden === false) {
-        // User has come back to the tab - do a silent refresh
-        refreshData();
+        // Only refresh if the page was hidden for more than 2 minutes
+        const timeHidden = Date.now() - lastVisibilityChange;
+        if (timeHidden > 120000) { // 2 minutes in milliseconds
+          // Do a silent refresh
+          refreshData();
+        }
+      } else {
+        lastVisibilityChange = Date.now();
       }
     };
     
@@ -77,18 +91,18 @@ const HomePage: React.FC = () => {
     };
   }, [refreshData]);
   
-  // Handle manual refresh
+  // Handle manual refresh - with less UI disturbance
   const handleRefresh = () => {
     setIsRefreshing(true);
     refreshData();
-    setTimeout(() => setIsRefreshing(false), 1000);
+    setTimeout(() => setIsRefreshing(false), 800);
   };
   
   const filteredPosts = activeFilter === 'all' 
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // We're not limiting videos anymore, all videos will be playable when in view
+  // All videos are now visible
   const postsWithVideos = filteredPosts;
 
   return (
@@ -101,13 +115,13 @@ const HomePage: React.FC = () => {
             size="icon" 
             className={`rounded-full ${connectionIssue ? 'text-red-500' : ''}`}
             onClick={handleRefresh}
-            disabled={isRefreshing || isAutoRefreshing}
+            disabled={isRefreshing}
           >
-            <RefreshCcw className={`h-5 w-5 ${isRefreshing || isAutoRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="sr-only">Refresh</span>
           </Button>
           {connectionIssue && (
-            <span className="text-xs text-red-500">Connection issues detected</span>
+            <span className="text-xs text-red-500">Connection issues</span>
           )}
         </div>
         

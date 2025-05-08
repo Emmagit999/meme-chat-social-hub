@@ -5,15 +5,17 @@ import { useMessaging } from '@/hooks/use-messaging';
 import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, UserRound, Users } from 'lucide-react';
+import { MessageCircle, UserRound, Users, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
   const { getFriends, startNewChat } = useMessaging();
   const [friends, setFriends] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -25,7 +27,7 @@ const PalsPage: React.FC = () => {
         const friendsList = await getFriends();
         setFriends(friendsList);
       } catch (error) {
-        console.error('Error loading friends:', error);
+        console.error('Error loading pals:', error);
       } finally {
         setIsLoading(false);
       }
@@ -35,9 +37,36 @@ const PalsPage: React.FC = () => {
   }, [user, getFriends]);
 
   const handleStartChat = async (friendId: string) => {
-    const chatId = await startNewChat(friendId);
-    if (chatId) {
-      navigate('/chat');
+    try {
+      const chatId = await startNewChat(friendId);
+      if (chatId) {
+        navigate('/chat');
+      }
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      toast.error("Couldn't start chat. Please try again.", {
+        duration: 3000
+      });
+    }
+  };
+  
+  const handleRefreshPals = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      const friendsList = await getFriends();
+      setFriends(friendsList);
+      toast.success("Pals list updated", {
+        duration: 2000
+      });
+    } catch (error) {
+      console.error('Error refreshing pals:', error);
+      toast.error("Couldn't refresh pals list", {
+        duration: 3000
+      });
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -45,13 +74,24 @@ const PalsPage: React.FC = () => {
     <div className="container py-6 px-4 md:px-6 mt-4">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-yellow-500">My Pals</h1>
-        <Button 
-          onClick={() => navigate('/merge')}
-          className="bg-yellow-500 hover:bg-yellow-600 text-black"
-          size="sm"
-        >
-          Find More Friends
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="ghost"
+            size="icon"
+            className={`text-yellow-500 ${isRefreshing ? 'animate-spin' : ''}`}
+            onClick={handleRefreshPals}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className="h-5 w-5" />
+          </Button>
+          <Button 
+            onClick={() => navigate('/merge')}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black"
+            size="sm"
+          >
+            Find More Pals
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -76,7 +116,7 @@ const PalsPage: React.FC = () => {
             onClick={() => navigate('/merge')}
             className="bg-yellow-500 hover:bg-yellow-600 text-black"
           >
-            Find Friends
+            Find Pals
           </Button>
         </div>
       ) : (

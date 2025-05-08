@@ -55,18 +55,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Function to refresh all data
+  // Function to refresh all data - now more silent with fewer notifications
   const refreshData = () => {
     if (isRefreshing) return; // Prevent multiple simultaneous refreshes
     
     setIsRefreshing(true);
     
-    // For UI feedback on refresh operations that take longer than 500ms
+    // Only show loading toast for refreshes that take longer than 1.5s
     const refreshTimer = setTimeout(() => {
-      toast.loading('Refreshing data...', {
-        icon: <RefreshCcw className="animate-spin" />
+      toast.loading('Refreshing content...', {
+        icon: <RefreshCcw className="animate-spin" />,
+        duration: 2000, // Auto-close after 2 seconds
       });
-    }, 500);
+    }, 1500);
     
     Promise.all([
       refreshPosts(),
@@ -75,12 +76,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .then(() => {
         setLastRefresh(new Date());
         clearTimeout(refreshTimer);
-        // Only show success notification for explicit refreshes
-        toast.success('Data refreshed successfully!', { duration: 1500 });
+        // Silent refresh - only show notification if explicitly requested by user
       })
       .catch(() => {
         clearTimeout(refreshTimer);
-        toast.error('Failed to refresh data');
+        toast.error('Connection issue detected', {
+          duration: 3000 // Auto-close after 3 seconds
+        });
       })
       .finally(() => {
         setIsRefreshing(false);

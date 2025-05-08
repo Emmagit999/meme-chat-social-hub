@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -23,7 +23,7 @@ const EmptyState = () => (
       <MessageCircle className="h-10 w-10 text-yellow-500" />
     </div>
     <h3 className="text-xl font-medium mb-2 text-yellow-500">Your messages</h3>
-    <p className="mb-4 text-gray-400">Send private messages to friends and connect with new people</p>
+    <p className="mb-4 text-gray-400">Send private messages to pals and connect with new people</p>
     <Button 
       onClick={() => window.location.href = '/merge'}
       className="bg-yellow-500 hover:bg-yellow-600 text-black"
@@ -72,7 +72,8 @@ const ChatPage: React.FC = () => {
     isConnected,
     reconnect,
     getUserById,
-    getSuggestedUsers
+    getSuggestedUsers,
+    lastError
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -279,7 +280,7 @@ const ChatPage: React.FC = () => {
                 onClick={() => navigate('/merge')}
               >
                 <Users className="h-4 w-4" />
-                Find New Friends
+                Find New Pals
               </Button>
             </div>
           </div>
@@ -311,6 +312,21 @@ const ChatPage: React.FC = () => {
                     >
                       <RefreshCw className="h-3 w-3 mr-1" />
                       Reconnect
+                    </Button>
+                  </div>
+                )}
+                
+                {lastError && (
+                  <div className="mb-4 p-3 bg-amber-900/20 text-amber-500 rounded-md flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    <span className="flex-1">There was an error sending your last message. Please try again.</span>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="ml-2 border-amber-500 text-amber-500 hover:bg-amber-500/20"
+                      onClick={() => toast.error("Message error: " + lastError.message, { duration: 5000 })}
+                    >
+                      Details
                     </Button>
                   </div>
                 )}

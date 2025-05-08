@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +48,7 @@ const ProfilePage: React.FC = () => {
               avatar: user.avatar || "",
               bio: user.bio || "",
               isPro: user.isPro || false,
-              createdAt: new Date() // Add a default createdAt value
+              createdAt: new Date() // Add createdAt to fix TypeScript error
             };
             setProfileUser(userWithCreatedAt);
             setBio(user.bio || "");
@@ -71,7 +72,7 @@ const ProfilePage: React.FC = () => {
               avatar: data.avatar_url || "",
               bio: data.bio || "",
               isPro: data.is_pro || false,
-              createdAt: new Date(data.updated_at || Date.now()) // Use updated_at as createdAt or current date as fallback
+              createdAt: new Date(data.updated_at || Date.now()) // Use updated_at as createdAt
             };
             setProfileUser(profileData);
             setBio(profileData.bio || "");
@@ -80,7 +81,9 @@ const ProfilePage: React.FC = () => {
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
-        toast.error("Failed to load profile information");
+        toast.error("Failed to load profile information", {
+          duration: 3000 // Auto-disappear after 3 seconds
+        });
       } finally {
         setIsLoading(false);
       }
@@ -128,9 +131,13 @@ const ProfilePage: React.FC = () => {
       .eq("id", user?.id);
     
     if (error) {
-      toast.error("Avatar update failed.");
+      toast.error("Avatar update failed.", {
+        duration: 3000 // Auto-disappear after 3 seconds
+      });
     } else {
-      toast.success("Avatar updated successfully!");
+      toast.success("Avatar updated successfully!", {
+        duration: 3000 // Auto-disappear after 3 seconds
+      });
     }
   };
 
@@ -148,10 +155,14 @@ const ProfilePage: React.FC = () => {
         .eq("id", user.id);
       
       if (error) {
-        toast.error("Profile update failed.");
+        toast.error("Profile update failed.", {
+          duration: 3000 // Auto-disappear after 3 seconds
+        });
         console.error("Profile update error:", error);
       } else {
-        toast.success("Profile updated successfully!");
+        toast.success("Profile updated successfully!", {
+          duration: 3000 // Auto-disappear after 3 seconds
+        });
       }
     }
     
@@ -159,7 +170,9 @@ const ProfilePage: React.FC = () => {
   };
   
   const handleUpgradeAccount = () => {
-    toast("Premium upgrade would be implemented here!");
+    toast("Premium upgrade would be implemented here!", {
+      duration: 3000 // Auto-disappear after 3 seconds
+    });
   };
   
   const handleMessageFriend = async (friendId: string) => {
@@ -172,9 +185,13 @@ const ProfilePage: React.FC = () => {
   const handleDeletePost = async (postId: string) => {
     try {
       await deletePost(postId);
-      toast.success("Post deleted successfully!");
+      toast.success("Post deleted successfully!", {
+        duration: 3000 // Auto-disappear after 3 seconds
+      });
     } catch (error) {
-      toast.error("Failed to delete post.");
+      toast.error("Failed to delete post.", {
+        duration: 3000 // Auto-disappear after 3 seconds
+      });
     }
   };
   
@@ -263,6 +280,19 @@ const ProfilePage: React.FC = () => {
             </p>
           )}
           
+          {/* Chat button for non-own profiles */}
+          {!isOwnProfile && (
+            <div className="mt-6 flex justify-center">
+              <Button 
+                onClick={() => handleMessageFriend(profileUser.id)}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Chat with {profileUser.displayName || profileUser.username}
+              </Button>
+            </div>
+          )}
+          
           {isOwnProfile && !profileUser.isPro && (
             <div className="mt-6 p-4 rounded-lg bg-memeGreen/10 border border-memeGreen/30">
               <h3 className="font-medium flex items-center mb-2">
@@ -286,7 +316,7 @@ const ProfilePage: React.FC = () => {
           <TabsTrigger value="posts" className="flex-1">Posts</TabsTrigger>
           {isOwnProfile && (
             <>
-              <TabsTrigger value="friends" className="flex-1">Friends</TabsTrigger>
+              <TabsTrigger value="friends" className="flex-1">Pals</TabsTrigger>
               <TabsTrigger value="liked" className="flex-1">Liked</TabsTrigger>
               <TabsTrigger value="saved" className="flex-1">Saved</TabsTrigger>
             </>
@@ -320,17 +350,17 @@ const ProfilePage: React.FC = () => {
             <TabsContent value="friends" className="mt-6">
               {isLoadingFriends ? (
                 <div className="flex justify-center py-10">
-                  <div className="animate-pulse text-lg">Loading friends...</div>
+                  <div className="animate-pulse text-lg">Loading pals...</div>
                 </div>
               ) : friends.length === 0 ? (
                 <div className="text-center py-10">
-                  <h2 className="text-xl mb-2">No friends yet</h2>
+                  <h2 className="text-xl mb-2">No pals yet</h2>
                   <p className="text-muted-foreground mb-4">Go to the Merge page to connect with people!</p>
                   <Button 
                     onClick={() => navigate('/merge')}
                     className="bg-yellow-500 hover:bg-yellow-600 text-black"
                   >
-                    Find Friends
+                    Find Pals
                   </Button>
                 </div>
               ) : (

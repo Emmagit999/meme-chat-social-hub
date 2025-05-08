@@ -8,6 +8,7 @@ import { useData } from "@/context/data-context";
 import { MessageCircle, Share2, Trash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PostCardProps {
   post: {
@@ -40,9 +41,12 @@ export const PostCard: React.FC<PostCardProps> = ({
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [isLiked, setIsLiked] = useState(() => isPostLiked(post.id));
   const [isAnimating, setIsAnimating] = useState(false);
   const [localLikeCount, setLocalLikeCount] = useState(post.likes);
+  const [shouldAutoplay, setShouldAutoplay] = useState(false);
+  const [userClickedPlay, setUserClickedPlay] = useState(false);
 
   // Update isLiked whenever likedPosts changes
   useEffect(() => {
@@ -88,7 +92,22 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // Enhanced Intersection Observer for videos - play when in view
+  const handleVideoClick = () => {
+    if (!isMobile) {
+      // On desktop, toggle play/pause on click
+      if (videoRef.current) {
+        if (videoRef.current.paused) {
+          videoRef.current.play().catch(e => console.log("Video play error:", e));
+          setUserClickedPlay(true);
+        } else {
+          videoRef.current.pause();
+          setUserClickedPlay(false);
+        }
+      }
+    }
+  };
+
+  // Enhanced Intersection Observer for videos - only autoplay on mobile devices
   useEffect(() => {
     if (!videoRef.current || !post.video) return;
     
@@ -96,17 +115,24 @@ export const PostCard: React.FC<PostCardProps> = ({
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            videoRef.current?.play().catch(e => {
-              // Handle autoplay restrictions by muting the video first
-              if (videoRef.current) {
-                videoRef.current.muted = true;
-                videoRef.current.play().catch(err => 
-                  console.log("Video play error:", err)
-                );
-              }
-            });
+            setShouldAutoplay(true);
+            // Only autoplay on mobile or if user has clicked play before
+            if (isMobile || userClickedPlay) {
+              videoRef.current?.play().catch(e => {
+                // Handle autoplay restrictions by muting the video first
+                if (videoRef.current) {
+                  videoRef.current.muted = true;
+                  videoRef.current.play().catch(err => 
+                    console.log("Video play error:", err)
+                  );
+                }
+              });
+            }
           } else {
-            videoRef.current?.pause();
+            setShouldAutoplay(false);
+            if (videoRef.current && !videoRef.current.paused) {
+              videoRef.current?.pause();
+            }
           }
         });
       },
@@ -120,7 +146,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         observer.unobserve(videoRef.current);
       }
     };
-  }, [post.video]);
+  }, [post.video, isMobile, userClickedPlay]);
 
   // Make sure videos are properly sized
   useEffect(() => {
@@ -188,17 +214,33 @@ export const PostCard: React.FC<PostCardProps> = ({
         )}
         
         {post.video && (
-          <video 
-            ref={videoRef}
-            controls
-            className="w-full rounded-md mb-4"
-            playsInline
-            preload="metadata"
-            loop
-          >
-            <source src={post.video} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
+          <div className="relative">
+            <video 
+              ref={videoRef}
+              controls={isMobile || userClickedPlay}
+              className="w-full rounded-md mb-4 cursor-pointer"
+              playsInline
+              preload="metadata"
+              loop
+              onClick={handleVideoClick}
+              poster={post.video + '#t=0.1'} // Add a poster from the first frame
+            >
+              <source src={post.video} type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            {!isMobile && !userClickedPlay && shouldAutoplay && (
+              <div 
+                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md cursor-pointer"
+                onClick={handleVideoClick}
+              >
+                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                  </svg>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
       
