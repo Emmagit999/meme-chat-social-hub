@@ -16,7 +16,7 @@ interface CommentItemProps {
 
 export const CommentItem: React.FC<CommentItemProps> = ({ comment }) => {
   const [isReplying, setIsReplying] = useState(false);
-  const { likeComment, addCommentReply } = useData();
+  const { likeComment, addCommentReply, likeCommentReply } = useData();
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
