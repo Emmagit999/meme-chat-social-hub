@@ -89,20 +89,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up real-time listeners for updates
   useEffect(() => {
-    // Configure Supabase real-time
-    const enableRealtimeForTable = async (table: string) => {
-      try {
-        // Enable REPLICA IDENTITY FULL for the table
-        await supabase.rpc('enable_realtime', { table_name: table });
-      } catch (error) {
-        console.error(`Error enabling realtime for ${table}:`, error);
-      }
-    };
-    
-    // Try to enable realtime for critical tables
-    enableRealtimeForTable('posts');
-    enableRealtimeForTable('comments');
-    enableRealtimeForTable('comment_replies');
+    // Configure Supabase real-time - using the direct channel approach
+    // instead of RPC which wasn't working
     
     // Listen for changes in posts table
     const postsChannel = supabase
