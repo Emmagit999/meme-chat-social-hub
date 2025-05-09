@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { useData } from "@/context/data-context";
 import { PostCard } from "@/components/posts/post-card";
-import { Camera, Crown, Edit, LogOut, MessageSquare, UserPlus } from "lucide-react";
+import { Crown, Edit, LogOut, MessageCircle, UserPlus, UserCheck, UserClock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarUpload } from "@/components/auth/avatar-upload";
 import { supabase } from "@/integrations/supabase/client";
 import { useChat } from "@/hooks/use-chat";
 import { useNavigate, useParams } from "react-router-dom";
 import { User } from "@/types";
+import { usePalRequests } from "@/hooks/use-pal-requests";
 
 const AVATAR_STORAGE_KEY = 'memechat_user_avatar';
 const BIO_STORAGE_KEY = 'memechat_user_bio';
@@ -22,6 +22,7 @@ const ProfilePage: React.FC = () => {
   const { user, logout } = useAuth();
   const { posts, likedPosts, deletePost } = useData();
   const { getFriends, startNewChat } = useChat();
+  const { requestCount, getPalStatus, sendPalRequest } = usePalRequests();
   const [isEditing, setIsEditing] = useState(false);
   const [bio, setBio] = useState("");
   const [avatar, setAvatar] = useState<string | undefined>("");
@@ -31,6 +32,8 @@ const ProfilePage: React.FC = () => {
   const { userId: profileId } = useParams<{ userId: string }>();
   const [profileUser, setProfileUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [palStatus, setPalStatus] = useState<'none' | 'pending' | 'requested' | 'accepted'>('none');
+  const [isLoadingPalStatus, setIsLoadingPalStatus] = useState(true);
   
   const isOwnProfile = !profileId || (user && profileId === user.id);
 
@@ -82,7 +85,7 @@ const ProfilePage: React.FC = () => {
       } catch (error) {
         console.error("Error fetching profile:", error);
         toast.error("Failed to load profile information", {
-          duration: 3000 // Auto-disappear after 3 seconds
+          duration: 10000 // Auto-disappear after 10 seconds
         });
       } finally {
         setIsLoading(false);
@@ -105,20 +108,98 @@ const ProfilePage: React.FC = () => {
       }
     }
     
-    const loadFriends = async () => {
+    const loadProfileFriends = async () => {
       setIsLoadingFriends(true);
       try {
-        const friendsList = await getFriends();
-        setFriends(friendsList);
+        const targetUserId = profileId || user?.id;
+        if (!targetUserId) return;
+        
+        // Try to get pals from friends table in Supabase
+        console.log(`Fetching friends data for profile: ${targetUserId}`);
+        const { data: friendsData, error: friendsError } = await supabase
+          .from('friends')
+          .select('friend_id')
+          .eq('user_id', targetUserId);
+          
+        if (friendsError) {
+          console.error("Error fetching friends for profile:", friendsError);
+          throw friendsError;
+        }
+        
+        console.log("Profile friends data received:", friendsData);
+        
+        // If we have pals in the database
+        if (friendsData && friendsData.length > 0) {
+          const palIds = friendsData.map(f => f.friend_id);
+          
+          // Get the profile data for each pal
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', palIds);
+            
+          if (profilesError) {
+            console.error("Error fetching profiles for friends:", profilesError);
+            throw profilesError;
+          }
+          
+          if (profilesData) {
+            const formattedFriends = profilesData.map(profile => ({
+              id: profile.id,
+              username: profile.username || 'pal',
+              displayName: profile.username || 'Pal',
+              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+              bio: profile.bio || '',
+              isPro: profile.is_pro || false,
+              createdAt: new Date(profile.updated_at || new Date())
+            }));
+            
+            console.log("Formatted profile friends:", formattedFriends);
+            setFriends(formattedFriends);
+            return;
+          }
+        } else {
+          console.log("No profile friends found in database, trying getFriends method");
+        }
+        
+        // Fallback to getFriends method for own profile
+        if (isOwnProfile) {
+          const friendsList = await getFriends();
+          setFriends(friendsList);
+        } else {
+          setFriends([]);
+        }
       } catch (error) {
-        console.error('Error loading friends:', error);
+        console.error('Error loading profile friends:', error);
+        setFriends([]);
       } finally {
         setIsLoadingFriends(false);
       }
     };
     
-    loadFriends();
-  }, [getFriends, isOwnProfile]);
+    if (profileUser) {
+      loadProfileFriends();
+    }
+  }, [getFriends, isOwnProfile, profileId, profileUser, user?.id]);
+
+  // Check pal status when viewing another user's profile
+  useEffect(() => {
+    const checkPalStatus = async () => {
+      if (!isOwnProfile && user && profileUser) {
+        setIsLoadingPalStatus(true);
+        try {
+          const status = await getPalStatus(profileUser.id);
+          setPalStatus(status);
+        } catch (error) {
+          console.error("Error checking pal status:", error);
+        } finally {
+          setIsLoadingPalStatus(false);
+        }
+      }
+    };
+    
+    checkPalStatus();
+  }, [isOwnProfile, user, profileUser, getPalStatus]);
 
   const handleUploadedAvatar = async (url: string) => {
     setAvatar(url);
@@ -132,11 +213,11 @@ const ProfilePage: React.FC = () => {
     
     if (error) {
       toast.error("Avatar update failed.", {
-        duration: 3000 // Auto-disappear after 3 seconds
+        duration: 10000
       });
     } else {
       toast.success("Avatar updated successfully!", {
-        duration: 3000 // Auto-disappear after 3 seconds
+        duration: 10000
       });
     }
   };
@@ -156,12 +237,12 @@ const ProfilePage: React.FC = () => {
       
       if (error) {
         toast.error("Profile update failed.", {
-          duration: 3000 // Auto-disappear after 3 seconds
+          duration: 10000
         });
         console.error("Profile update error:", error);
       } else {
         toast.success("Profile updated successfully!", {
-          duration: 3000 // Auto-disappear after 3 seconds
+          duration: 10000
         });
       }
     }
@@ -171,7 +252,7 @@ const ProfilePage: React.FC = () => {
   
   const handleUpgradeAccount = () => {
     toast("Premium upgrade would be implemented here!", {
-      duration: 3000 // Auto-disappear after 3 seconds
+      duration: 10000
     });
   };
   
@@ -186,13 +267,24 @@ const ProfilePage: React.FC = () => {
     try {
       await deletePost(postId);
       toast.success("Post deleted successfully!", {
-        duration: 3000 // Auto-disappear after 3 seconds
+        duration: 10000
       });
     } catch (error) {
       toast.error("Failed to delete post.", {
-        duration: 3000 // Auto-disappear after 3 seconds
+        duration: 10000
       });
     }
+  };
+
+  const handleSendPalRequest = async () => {
+    if (!profileUser) return;
+    
+    setIsLoadingPalStatus(true);
+    const success = await sendPalRequest(profileUser.id);
+    if (success) {
+      setPalStatus('requested');
+    }
+    setIsLoadingPalStatus(false);
   };
   
   if (isLoading) {
@@ -280,16 +372,59 @@ const ProfilePage: React.FC = () => {
             </p>
           )}
           
-          {/* Chat button for non-own profiles */}
+          {/* Chat and Add Pal buttons for non-own profiles */}
           {!isOwnProfile && (
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex justify-center gap-3">
               <Button 
                 onClick={() => handleMessageFriend(profileUser.id)}
                 className="bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-2"
               >
-                <MessageSquare className="h-4 w-4" />
-                Chat with {profileUser.displayName || profileUser.username}
+                <MessageCircle className="h-4 w-4" />
+                Message
               </Button>
+
+              {isLoadingPalStatus ? (
+                <Button disabled variant="outline" className="border-yellow-300 text-yellow-500">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Loading...
+                </Button>
+              ) : palStatus === 'accepted' ? (
+                <Button 
+                  disabled 
+                  variant="outline" 
+                  className="border-green-500 text-green-500"
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Pals
+                </Button>
+              ) : palStatus === 'requested' ? (
+                <Button 
+                  disabled 
+                  variant="outline" 
+                  className="border-yellow-300 text-yellow-500"
+                >
+                  <UserClock className="h-4 w-4 mr-2" />
+                  Request Sent
+                </Button>
+              ) : palStatus === 'pending' ? (
+                <Button 
+                  onClick={() => navigate('/pals')}
+                  variant="outline" 
+                  className="border-yellow-300 text-yellow-500"
+                >
+                  <UserClock className="h-4 w-4 mr-2" />
+                  Respond to Request
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleSendPalRequest}
+                  variant="outline" 
+                  className="border-yellow-300 text-yellow-500"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add as Pal
+                </Button>
+              )}
             </div>
           )}
           
@@ -314,9 +449,16 @@ const ProfilePage: React.FC = () => {
       <Tabs defaultValue="posts">
         <TabsList className="w-full">
           <TabsTrigger value="posts" className="flex-1">Posts</TabsTrigger>
+          <TabsTrigger value="pals" className="flex-1">
+            Pals
+            {isOwnProfile && requestCount > 0 && (
+              <span className="ml-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 inline-flex items-center justify-center">
+                {requestCount}
+              </span>
+            )}
+          </TabsTrigger>
           {isOwnProfile && (
             <>
-              <TabsTrigger value="friends" className="flex-1">Pals</TabsTrigger>
               <TabsTrigger value="liked" className="flex-1">Liked</TabsTrigger>
               <TabsTrigger value="saved" className="flex-1">Saved</TabsTrigger>
             </>
@@ -345,63 +487,78 @@ const ProfilePage: React.FC = () => {
           )}
         </TabsContent>
         
+        <TabsContent value="pals" className="mt-6">
+          {isOwnProfile && requestCount > 0 && (
+            <div className="mb-6 p-4 border border-yellow-500/30 rounded-lg bg-yellow-500/10">
+              <h3 className="font-medium text-yellow-500 mb-2">Pal Requests</h3>
+              <p className="text-sm text-gray-300 mb-3">
+                You have {requestCount} pending pal {requestCount === 1 ? 'request' : 'requests'}
+              </p>
+              <Button 
+                onClick={() => navigate('/pals')}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black w-full"
+              >
+                View Requests
+              </Button>
+            </div>
+          )}
+          
+          {isLoadingFriends ? (
+            <div className="flex justify-center py-10">
+              <div className="animate-pulse text-lg">Loading pals...</div>
+            </div>
+          ) : friends.length === 0 ? (
+            <div className="text-center py-10">
+              <h2 className="text-xl mb-2">No pals yet</h2>
+              <p className="text-muted-foreground mb-4">Go to the Merge page to connect with people!</p>
+              <Button 
+                onClick={() => navigate('/merge')}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+              >
+                Find Pals
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {friends.map(friend => (
+                <Card key={friend.id} className="border-yellow-400">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-16 w-16 border-2 border-yellow-400">
+                        <AvatarImage src={friend.avatar} alt={friend.username} />
+                        <AvatarFallback className="text-lg">{friend.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-medium text-lg">{friend.displayName || friend.username}</h3>
+                        <p className="text-sm text-muted-foreground">@{friend.username}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
+                        onClick={() => handleMessageFriend(friend.id)}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Message
+                      </Button>
+                      <Button 
+                        variant="outline"
+                        className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
+                        onClick={() => navigate(`/profile/${friend.id}`)}
+                      >
+                        View Profile
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
         {isOwnProfile && (
           <>
-            <TabsContent value="friends" className="mt-6">
-              {isLoadingFriends ? (
-                <div className="flex justify-center py-10">
-                  <div className="animate-pulse text-lg">Loading pals...</div>
-                </div>
-              ) : friends.length === 0 ? (
-                <div className="text-center py-10">
-                  <h2 className="text-xl mb-2">No pals yet</h2>
-                  <p className="text-muted-foreground mb-4">Go to the Merge page to connect with people!</p>
-                  <Button 
-                    onClick={() => navigate('/merge')}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-black"
-                  >
-                    Find Pals
-                  </Button>
-                </div>
-              ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {friends.map(friend => (
-                    <Card key={friend.id} className="border-yellow-400">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-16 w-16 border-2 border-yellow-400">
-                            <AvatarImage src={friend.avatar} alt={friend.username} />
-                            <AvatarFallback className="text-lg">{friend.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <h3 className="font-medium text-lg">{friend.displayName || friend.username}</h3>
-                            <p className="text-sm text-muted-foreground">@{friend.username}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 mt-4">
-                          <Button 
-                            variant="outline" 
-                            className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
-                            onClick={() => handleMessageFriend(friend.id)}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            Message
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            className="flex-1 border-yellow-400 text-yellow-500 hover:bg-yellow-500/10"
-                            onClick={() => navigate(`/profile/${friend.id}`)}
-                          >
-                            View Profile
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-            
             <TabsContent value="liked" className="mt-6">
               {userLikedPosts.length === 0 ? (
                 <div className="text-center py-10">

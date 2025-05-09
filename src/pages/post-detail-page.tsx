@@ -19,8 +19,7 @@ const PostDetailPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Remove auto-refresh to prevent interruption during commenting
-  // Rely on Supabase real-time updates instead
+  // No auto-refresh - rely on Supabase real-time updates
 
   const handleRefresh = () => {
     // Manual refresh only when user explicitly requests it

@@ -5,7 +5,6 @@ import { usePosts } from '@/hooks/use-posts';
 import { useComments } from '@/hooks/use-comments';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { RefreshCcw } from 'lucide-react';
 
 type DataContextType = {
   posts: Post[];
@@ -61,22 +60,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setIsRefreshing(true);
     
-    // No notification or UI refresh for background connection maintenance
     Promise.all([
       refreshPosts(),
       refreshComments()
     ])
       .then(() => {
         setLastRefresh(new Date());
-        // No toast notification for regular refreshes to avoid UI interruptions
+        // No toast notification to avoid UI interruptions
       })
       .catch((error) => {
         console.error("Refresh error:", error);
-        // Only show error notification if there's a critical issue and user is online
+        // Only show error notification if there's a critical issue
         if (navigator.onLine) {
           toast.error('Connection issue detected', {
-            duration: 10000, // 10 seconds auto-close
-            position: 'bottom-center'
+            duration: 10000
           });
         }
       })

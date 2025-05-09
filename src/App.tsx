@@ -21,6 +21,7 @@ import AuthCallback from "@/pages/auth-callback";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationsPage from "@/pages/notifications-page";
 import PostDetailPage from "@/pages/post-detail-page";
+import { usePalRequests } from "@/hooks/use-pal-requests";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -36,16 +37,20 @@ const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Create a context for sharing pal request count with the navbar
+export const PalRequestContext = React.createContext<number>(0);
+
 const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
+  const { requestCount } = usePalRequests();
   
   if (isLoading) {
     return <SplashScreen />;
   }
   
   return (
-    <>
+    <PalRequestContext.Provider value={requestCount}>
       {isAuthenticated && <Navbar />}
       <div className={`
         ${isAuthenticated ? (isMobile ? 'pt-2 px-2' : 'pt-16 px-4') : ''}
@@ -104,7 +109,7 @@ const AppRoutes = () => {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
-    </>
+    </PalRequestContext.Provider>
   );
 };
 

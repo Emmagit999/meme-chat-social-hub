@@ -5,15 +5,18 @@ import { useMessaging } from '@/hooks/use-messaging';
 import { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, UserRound, Users, RefreshCw } from 'lucide-react';
+import { MessageCircle, UserRound, Users, RefreshCw, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePalRequests } from '@/hooks/use-pal-requests';
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
   const { getFriends, startNewChat } = useMessaging();
+  const { receivedRequests, acceptPalRequest, rejectPalRequest, loadPalRequests } = usePalRequests();
   const [pals, setPals] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -120,12 +123,13 @@ const PalsPage: React.FC = () => {
     
     // Initial load
     loadPals();
+    loadPalRequests();
     
     // Set up real-time listener for friends table changes
     const friendsChannel = supabase
       .channel('friends-changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` },
+        { event: '*', schema: 'public', table: 'friends', filter: `or(user_id=eq.${user.id},friend_id=eq.${user.id})` },
         (payload) => {
           console.log('Friends table change detected:', payload);
           loadPals(); // Reload pals when changes are detected
@@ -136,7 +140,7 @@ const PalsPage: React.FC = () => {
     return () => {
       supabase.removeChannel(friendsChannel);
     };
-  }, [user, getFriends]);
+  }, [user, getFriends, loadPalRequests]);
 
   const handleStartChat = async (palId: string) => {
     try {
@@ -158,6 +162,7 @@ const PalsPage: React.FC = () => {
     setIsRefreshing(true);
     try {
       await loadPals();
+      await loadPalRequests();
       toast.success("Pals list refreshed", {
         duration: 10000
       });
@@ -171,10 +176,26 @@ const PalsPage: React.FC = () => {
     }
   };
 
+  const handleAcceptPalRequest = async (requestId: string) => {
+    const success = await acceptPalRequest(requestId);
+    if (success) {
+      loadPals(); // Reload the pals list after accepting
+    }
+  };
+
+  const pendingRequests = receivedRequests.filter(request => request.status === 'pending');
+
   return (
     <div className="container py-6 px-4 md:px-6 mt-4">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-yellow-500">My Pals</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-yellow-500">My Pals</h1>
+          {pendingRequests.length > 0 && (
+            <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {pendingRequests.length}
+            </span>
+          )}
+        </div>
         <div className="flex gap-2">
           <Button 
             variant="ghost"
@@ -195,74 +216,161 @@ const PalsPage: React.FC = () => {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="flex items-center gap-4 p-4 border border-gray-800 rounded-lg">
-              <Skeleton className="h-12 w-12 rounded-full" />
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-4 w-1/4" />
-                <Skeleton className="h-3 w-1/2" />
-              </div>
-              <Skeleton className="h-9 w-20" />
-            </div>
-          ))}
-        </div>
-      ) : pals.length === 0 ? (
-        <div className="text-center py-10 border border-gray-800 rounded-lg bg-gray-900">
-          <Users className="h-12 w-12 mx-auto mb-3 text-yellow-500/50" />
-          <h2 className="text-xl mb-2 text-yellow-500">No pals yet</h2>
-          <p className="text-gray-400 mb-4">Find and connect with new friends!</p>
-          <Button 
-            onClick={() => navigate('/search')}
-            className="bg-yellow-500 hover:bg-yellow-600 text-black"
-          >
-            Find Pals
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {pals.map((pal) => (
-            <div key={pal.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 border border-yellow-500/30">
-                  <AvatarImage src={pal.avatar} />
-                  <AvatarFallback className="bg-gray-800">
-                    {pal.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-medium text-yellow-500">
-                    {pal.displayName || pal.username}
-                  </h3>
-                  <p className="text-xs text-gray-400">
-                    {pal.bio || 'No bio yet'}
-                  </p>
+      <Tabs defaultValue="pals" className="w-full">
+        <TabsList className="w-full grid grid-cols-2 mb-8">
+          <TabsTrigger value="pals" className="text-base">
+            My Pals
+          </TabsTrigger>
+          <TabsTrigger value="requests" className="text-base">
+            Pal Requests
+            {pendingRequests.length > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ml-2">
+                {pendingRequests.length}
+              </span>
+            )}
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="pals">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border border-gray-800 rounded-lg">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-9 w-20" />
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => handleStartChat(pal.id)}
-                  variant="outline" 
-                  size="sm"
-                  className="flex items-center gap-1 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span>Chat</span>
-                </Button>
-                <Button
-                  onClick={() => navigate(`/profile/${pal.id}`)}
-                  variant="ghost" 
-                  size="sm"
-                  className="text-gray-400 hover:text-white"
-                >
-                  Profile
-                </Button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          ) : pals.length === 0 ? (
+            <div className="text-center py-10 border border-gray-800 rounded-lg bg-gray-900">
+              <Users className="h-12 w-12 mx-auto mb-3 text-yellow-500/50" />
+              <h2 className="text-xl mb-2 text-yellow-500">No pals yet</h2>
+              <p className="text-gray-400 mb-4">Find and connect with new friends!</p>
+              <Button 
+                onClick={() => navigate('/search')}
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+              >
+                Find Pals
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pals.map((pal) => (
+                <div key={pal.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border border-yellow-500/30">
+                      <AvatarImage src={pal.avatar} />
+                      <AvatarFallback className="bg-gray-800">
+                        {pal.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium text-yellow-500">
+                        {pal.displayName || pal.username}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        {pal.bio || 'No bio yet'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => handleStartChat(pal.id)}
+                      variant="outline" 
+                      size="sm"
+                      className="flex items-center gap-1 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span>Chat</span>
+                    </Button>
+                    <Button
+                      onClick={() => navigate(`/profile/${pal.id}`)}
+                      variant="ghost" 
+                      size="sm"
+                      className="text-gray-400 hover:text-white"
+                    >
+                      Profile
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        
+        <TabsContent value="requests">
+          {isLoading ? (
+            <div className="space-y-4">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border border-gray-800 rounded-lg">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-20" />
+                    <Skeleton className="h-9 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : pendingRequests.length === 0 ? (
+            <div className="text-center py-10 border border-gray-800 rounded-lg bg-gray-900">
+              <UserCheck className="h-12 w-12 mx-auto mb-3 text-yellow-500/50" />
+              <h2 className="text-xl mb-2 text-yellow-500">No pending pal requests</h2>
+              <p className="text-gray-400 mb-4">When someone adds you as a pal, you'll see their request here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingRequests.map((request) => (
+                <div key={request.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-12 w-12 border border-yellow-500/30">
+                      <AvatarImage src={request.sender?.avatar} />
+                      <AvatarFallback className="bg-gray-800">
+                        {request.sender?.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium text-yellow-500">
+                        {request.sender?.displayName || request.sender?.username}
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        wants to be your pal
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => handleAcceptPalRequest(request.id)}
+                      variant="outline" 
+                      size="sm"
+                      className="flex items-center gap-1 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      <span>Accept</span>
+                    </Button>
+                    <Button
+                      onClick={() => rejectPalRequest(request.id)}
+                      variant="ghost" 
+                      size="sm"
+                      className="flex items-center gap-1 text-red-500 hover:bg-red-500/10"
+                    >
+                      <UserX className="h-4 w-4" />
+                      <span>Reject</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
