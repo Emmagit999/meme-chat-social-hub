@@ -19,18 +19,11 @@ const PostDetailPage: React.FC = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Set up auto-refresh 
-  useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      if (postId) {
-        refreshData();
-      }
-    }, 15000); // refresh every 15 seconds
-    
-    return () => clearInterval(refreshInterval);
-  }, [refreshData, postId]);
+  // Remove auto-refresh to prevent interruption during commenting
+  // Rely on Supabase real-time updates instead
 
   const handleRefresh = () => {
+    // Manual refresh only when user explicitly requests it
     refreshData();
   };
 

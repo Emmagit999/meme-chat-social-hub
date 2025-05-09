@@ -23,17 +23,16 @@ const HomePage: React.FC = () => {
     requestPermission();
   }, [requestPermission]);
 
-  // Silent background connection check - no visible refresh needed
+  // Silent background connection check - no visible refresh or UI updates
   useEffect(() => {
     // Check initial connection state
     setConnectionIssue(!navigator.onLine);
     
-    // Only update UI when connection state changes
+    // Only update connection status, not UI
     const handleOnline = () => {
       if (connectionIssue) {
         setConnectionIssue(false);
-        // Silent background refresh of data without notification
-        refreshData();
+        // No auto-refresh - let Supabase real-time handle updates
       }
     };
     
@@ -44,52 +43,18 @@ const HomePage: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Periodic silent background check for critical services only
-    const connectionCheck = setInterval(() => {
-      if (navigator.onLine && connectionIssue) {
-        // Only ping server if we previously had connection issues
-        fetch('/api/ping')
-          .then(() => {
-            setConnectionIssue(false);
-            // Silent refresh
-            refreshData();
-          })
-          .catch(() => setConnectionIssue(true));
-      }
-    }, 300000); // Check every 5 minutes - much less frequent
+    // Remove periodic connection checks to avoid unwanted refreshes
     
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      clearInterval(connectionCheck);
     };
-  }, [refreshData, connectionIssue]);
+  }, [connectionIssue]);
 
-  // Smart background refresh - only when needed
-  useEffect(() => {
-    let lastVisibilityChange = Date.now();
-    
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && document.hidden === false) {
-        // Only refresh if the page was hidden for more than 5 minutes
-        const timeHidden = Date.now() - lastVisibilityChange;
-        if (timeHidden > 300000) { // 5 minutes in milliseconds
-          // Silent background refresh
-          refreshData();
-        }
-      } else {
-        lastVisibilityChange = Date.now();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [refreshData]);
+  // Remove smart background refresh to prevent unwanted UI refreshes
+  // Rely on Supabase real-time updates instead
   
-  // More discrete manual refresh
+  // Manual refresh function - only used when user explicitly clicks refresh
   const handleRefresh = () => {
     setIsRefreshing(true);
     refreshData();
@@ -100,7 +65,7 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // Organize posts to alternate image and video in grid layout for desktop
+  // Organize posts - maintain the alternate layout but avoid unnecessary refreshes
   const organizedPosts = !isMobile ? [
     ...filteredPosts.filter(post => post.image).slice(0, Math.ceil(filteredPosts.length / 2)),
     ...filteredPosts.filter(post => post.video).slice(0, Math.floor(filteredPosts.length / 2))

@@ -55,27 +55,27 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Function to refresh all data - now completely silent
+  // Function to manually refresh data - only called when explicitly requested
   const refreshData = () => {
     if (isRefreshing) return; // Prevent multiple simultaneous refreshes
     
     setIsRefreshing(true);
     
-    // No toast notification for regular refreshes
+    // No notification or UI refresh for background connection maintenance
     Promise.all([
       refreshPosts(),
       refreshComments()
     ])
       .then(() => {
         setLastRefresh(new Date());
-        // No notification on successful refresh
+        // No toast notification for regular refreshes to avoid UI interruptions
       })
       .catch((error) => {
         console.error("Refresh error:", error);
-        // Only show error notification if there's a serious problem
+        // Only show error notification if there's a critical issue and user is online
         if (navigator.onLine) {
           toast.error('Connection issue detected', {
-            duration: 3000, // Auto-close after 3 seconds
+            duration: 10000, // 10 seconds auto-close
             position: 'bottom-center'
           });
         }
@@ -85,9 +85,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
   };
 
-  // Set up real-time listeners for updates
+  // Set up real-time listeners for updates - never refresh the full UI
   useEffect(() => {
-    // Configure Supabase real-time - using the channel approach
+    // Configure Supabase real-time listeners for passive updates
     
     // Listen for changes in posts table
     const postsChannel = supabase
@@ -96,6 +96,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { event: '*', schema: 'public', table: 'posts' },
         (payload) => {
           console.log('Posts change detected:', payload);
+          // Silently update data in the background without UI refresh
           refreshPosts();
         }
       )
@@ -108,6 +109,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { event: '*', schema: 'public', table: 'comments' },
         (payload) => {
           console.log('Comments change detected:', payload);
+          // Silently update data in the background without UI refresh
           refreshComments();
         }
       )
@@ -120,6 +122,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         { event: '*', schema: 'public', table: 'comment_replies' },
         (payload) => {
           console.log('Replies change detected:', payload);
+          // Silently update data in the background without UI refresh
           refreshComments();
         }
       )

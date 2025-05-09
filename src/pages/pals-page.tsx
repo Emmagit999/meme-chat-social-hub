@@ -19,26 +19,31 @@ const PalsPage: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  // Improved function to load pals with better error handling
+  // Improved function to load pals with more resilient error handling
   const loadPals = async () => {
     if (!user) return;
     
     try {
       setIsLoading(true);
       
-      // Try to get pals from friends table in Supabase
+      // Try to get pals from friends table in Supabase - with enhanced error logging
+      console.log("Fetching friends data for user:", user.id);
       const { data: friendsData, error: friendsError } = await supabase
         .from('friends')
         .select('friend_id')
         .eq('user_id', user.id);
         
       if (friendsError) {
+        console.error("Error fetching friends:", friendsError);
         throw friendsError;
       }
+      
+      console.log("Friends data received:", friendsData);
       
       // If we have pals in the database
       if (friendsData && friendsData.length > 0) {
         const palIds = friendsData.map(f => f.friend_id);
+        console.log("Found pal IDs:", palIds);
         
         // Get the profile data for each pal
         const { data: profilesData, error: profilesError } = await supabase
@@ -47,8 +52,11 @@ const PalsPage: React.FC = () => {
           .in('id', palIds);
           
         if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
           throw profilesError;
         }
+        
+        console.log("Profile data received:", profilesData);
         
         if (profilesData) {
           const formattedPals = profilesData.map(profile => ({
@@ -61,22 +69,34 @@ const PalsPage: React.FC = () => {
             createdAt: new Date(profile.updated_at || new Date())
           }));
           
+          console.log("Formatted pals:", formattedPals);
           setPals(formattedPals);
+          
+          // Cache successful results in localStorage as backup
+          localStorage.setItem('pals', JSON.stringify(formattedPals));
           return;
         }
+      } else {
+        console.log("No friends found in database, trying getFriends method");
       }
       
       // Fallback to getFriends method
       const friendsList = await getFriends();
+      console.log("Friends from getFriends method:", friendsList);
       setPals(friendsList);
+      
+      // Cache results
+      localStorage.setItem('pals', JSON.stringify(friendsList));
     } catch (error) {
       console.error('Error loading pals:', error);
-      // Fallback to localStorage as last resort
+      
+      // Try to load from localStorage as backup
       const storedPals = localStorage.getItem('pals');
       if (storedPals) {
         try {
           const parsedPals = JSON.parse(storedPals);
           setPals(parsedPals);
+          console.log("Loaded pals from localStorage backup:", parsedPals);
         } catch (e) {
           console.error('Error parsing stored pals:', e);
           setPals([]);
@@ -84,13 +104,38 @@ const PalsPage: React.FC = () => {
       } else {
         setPals([]);
       }
+      
+      // Notify the user of the issue
+      toast.error("Had trouble loading your pals list", {
+        duration: 10000
+      });
     } finally {
       setIsLoading(false);
     }
   };
   
+  // Set up real-time listener for the friends table
   useEffect(() => {
+    if (!user) return;
+    
+    // Initial load
     loadPals();
+    
+    // Set up real-time listener for friends table changes
+    const friendsChannel = supabase
+      .channel('friends-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'friends', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          console.log('Friends table change detected:', payload);
+          loadPals(); // Reload pals when changes are detected
+        }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(friendsChannel);
+    };
   }, [user, getFriends]);
 
   const handleStartChat = async (palId: string) => {
@@ -113,6 +158,9 @@ const PalsPage: React.FC = () => {
     setIsRefreshing(true);
     try {
       await loadPals();
+      toast.success("Pals list refreshed", {
+        duration: 10000
+      });
     } catch (error) {
       console.error('Error refreshing pals:', error);
       toast.error("Couldn't refresh pals list", {
