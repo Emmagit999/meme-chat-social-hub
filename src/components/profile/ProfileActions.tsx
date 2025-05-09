@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { MessageCircle, UserPlus, UserCheck, UserClock, Loader2 } from "lucide-react";
+import { MessageCircle, UserPlus, UserCheck, Clock, Loader2 } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { usePalRequests } from '@/hooks/use-pal-requests';
 import { useChat } from '@/hooks/use-chat';
@@ -82,7 +81,7 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ profileUser }) =
           variant="outline" 
           className="border-yellow-300 text-yellow-500"
         >
-          <UserClock className="h-4 w-4 mr-2" />
+          <Clock className="h-4 w-4 mr-2" />
           Request Sent
         </Button>
       ) : palStatus === 'pending' ? (
@@ -91,7 +90,7 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({ profileUser }) =
           variant="outline" 
           className="border-yellow-300 text-yellow-500"
         >
-          <UserClock className="h-4 w-4 mr-2" />
+          <Clock className="h-4 w-4 mr-2" />
           Respond to Request
         </Button>
       ) : (

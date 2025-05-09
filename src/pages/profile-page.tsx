@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/auth-context";
 import { useData } from "@/context/data-context";
 import { PostCard } from "@/components/posts/post-card";
-import { Crown, Edit, LogOut, MessageCircle, UserPlus, UserCheck, UserClock, Loader2 } from "lucide-react";
+import { Crown, Edit, LogOut, MessageCircle, UserPlus, UserCheck, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarUpload } from "@/components/auth/avatar-upload";
 import { supabase } from "@/integrations/supabase/client";
@@ -403,7 +403,7 @@ const ProfilePage: React.FC = () => {
                   variant="outline" 
                   className="border-yellow-300 text-yellow-500"
                 >
-                  <UserClock className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2" />
                   Request Sent
                 </Button>
               ) : palStatus === 'pending' ? (
@@ -412,7 +412,7 @@ const ProfilePage: React.FC = () => {
                   variant="outline" 
                   className="border-yellow-300 text-yellow-500"
                 >
-                  <UserClock className="h-4 w-4 mr-2" />
+                  <Clock className="h-4 w-4 mr-2" />
                   Respond to Request
                 </Button>
               ) : (
