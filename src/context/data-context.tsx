@@ -55,34 +55,30 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
-  // Function to refresh all data - now more silent with fewer notifications
+  // Function to refresh all data - now completely silent
   const refreshData = () => {
     if (isRefreshing) return; // Prevent multiple simultaneous refreshes
     
     setIsRefreshing(true);
     
-    // Only show loading toast for refreshes that take longer than 1.5s
-    const refreshTimer = setTimeout(() => {
-      toast.loading('Refreshing content...', {
-        icon: <RefreshCcw className="animate-spin" />,
-        duration: 2000, // Auto-close after 2 seconds
-      });
-    }, 1500);
-    
+    // No toast notification for regular refreshes
     Promise.all([
       refreshPosts(),
       refreshComments()
     ])
       .then(() => {
         setLastRefresh(new Date());
-        clearTimeout(refreshTimer);
-        // Silent refresh - only show notification if explicitly requested by user
+        // No notification on successful refresh
       })
-      .catch(() => {
-        clearTimeout(refreshTimer);
-        toast.error('Connection issue detected', {
-          duration: 3000 // Auto-close after 3 seconds
-        });
+      .catch((error) => {
+        console.error("Refresh error:", error);
+        // Only show error notification if there's a serious problem
+        if (navigator.onLine) {
+          toast.error('Connection issue detected', {
+            duration: 3000, // Auto-close after 3 seconds
+            position: 'bottom-center'
+          });
+        }
       })
       .finally(() => {
         setIsRefreshing(false);
@@ -91,8 +87,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Set up real-time listeners for updates
   useEffect(() => {
-    // Configure Supabase real-time - using the direct channel approach
-    // instead of RPC which wasn't working
+    // Configure Supabase real-time - using the channel approach
     
     // Listen for changes in posts table
     const postsChannel = supabase

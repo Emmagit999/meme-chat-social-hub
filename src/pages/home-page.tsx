@@ -23,12 +23,16 @@ const HomePage: React.FC = () => {
     requestPermission();
   }, [requestPermission]);
 
-  // Monitor connection status - more subtle approach
+  // Silent background connection check - no visible refresh needed
   useEffect(() => {
+    // Check initial connection state
+    setConnectionIssue(!navigator.onLine);
+    
+    // Only update UI when connection state changes
     const handleOnline = () => {
       if (connectionIssue) {
         setConnectionIssue(false);
-        // When connection comes back, do a silent refresh
+        // Silent background refresh of data without notification
         refreshData();
       }
     };
@@ -40,25 +44,19 @@ const HomePage: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     
-    // Check initial connection state
-    setConnectionIssue(!navigator.onLine);
-    
-    // Periodic check for unstable connections - less frequent and more quiet
+    // Periodic silent background check for critical services only
     const connectionCheck = setInterval(() => {
-      if (navigator.onLine) {
-        // Only check the server if we previously had connection issues
-        if (connectionIssue) {
-          fetch('/api/ping')
-            .then(() => {
-              setConnectionIssue(false);
-              refreshData();
-            })
-            .catch(() => setConnectionIssue(true));
-        }
-      } else {
-        setConnectionIssue(true);
+      if (navigator.onLine && connectionIssue) {
+        // Only ping server if we previously had connection issues
+        fetch('/api/ping')
+          .then(() => {
+            setConnectionIssue(false);
+            // Silent refresh
+            refreshData();
+          })
+          .catch(() => setConnectionIssue(true));
       }
-    }, 120000); // Check every 2 minutes instead of every minute
+    }, 300000); // Check every 5 minutes - much less frequent
     
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -67,16 +65,16 @@ const HomePage: React.FC = () => {
     };
   }, [refreshData, connectionIssue]);
 
-  // Intelligent refresh - only refresh when the tab becomes visible after being hidden for a while
+  // Smart background refresh - only when needed
   useEffect(() => {
     let lastVisibilityChange = Date.now();
     
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && document.hidden === false) {
-        // Only refresh if the page was hidden for more than 2 minutes
+        // Only refresh if the page was hidden for more than 5 minutes
         const timeHidden = Date.now() - lastVisibilityChange;
-        if (timeHidden > 120000) { // 2 minutes in milliseconds
-          // Do a silent refresh
+        if (timeHidden > 300000) { // 5 minutes in milliseconds
+          // Silent background refresh
           refreshData();
         }
       } else {
@@ -91,7 +89,7 @@ const HomePage: React.FC = () => {
     };
   }, [refreshData]);
   
-  // Handle manual refresh - with less UI disturbance
+  // More discrete manual refresh
   const handleRefresh = () => {
     setIsRefreshing(true);
     refreshData();
@@ -102,26 +100,29 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // All videos are now visible
-  const postsWithVideos = filteredPosts;
+  // Organize posts to alternate image and video in grid layout for desktop
+  const organizedPosts = !isMobile ? [
+    ...filteredPosts.filter(post => post.image).slice(0, Math.ceil(filteredPosts.length / 2)),
+    ...filteredPosts.filter(post => post.video).slice(0, Math.floor(filteredPosts.length / 2))
+  ] : filteredPosts;
 
   return (
     <div className="container py-16 pb-24 md:pb-16">
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Home Feed</h1>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`rounded-full ${connectionIssue ? 'text-red-500' : ''}`}
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="sr-only">Refresh</span>
-          </Button>
+          {/* Hidden refresh button unless needed */}
           {connectionIssue && (
-            <span className="text-xs text-red-500">Connection issues</span>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="rounded-full text-red-500"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh</span>
+            </Button>
           )}
         </div>
         
@@ -147,7 +148,7 @@ const HomePage: React.FC = () => {
         <div className="flex justify-center py-10">
           <div className="animate-pulse text-lg">Loading posts...</div>
         </div>
-      ) : postsWithVideos.length === 0 ? (
+      ) : organizedPosts.length === 0 ? (
         <div className="text-center py-10">
           <h2 className="text-xl mb-2">No posts yet</h2>
           <p className="text-muted-foreground mb-4">Be the first to post!</p>
@@ -160,8 +161,8 @@ const HomePage: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          {postsWithVideos.map(post => (
-            <div key={post.id} className="flex flex-col h-full max-h-[600px] md:max-h-[500px]">
+          {organizedPosts.map(post => (
+            <div key={post.id} className="flex flex-col">
               <PostCard post={post} className="h-full" />
             </div>
           ))}

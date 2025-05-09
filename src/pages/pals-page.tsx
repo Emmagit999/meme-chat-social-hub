@@ -9,43 +9,100 @@ import { MessageCircle, UserRound, Users, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const PalsPage: React.FC = () => {
   const { user } = useAuth();
   const { getFriends, startNewChat } = useMessaging();
-  const [friends, setFriends] = useState<User[]>([]);
+  const [pals, setPals] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadFriends = async () => {
-      if (!user) return;
-      
-      try {
-        setIsLoading(true);
-        const friendsList = await getFriends();
-        setFriends(friendsList);
-      } catch (error) {
-        console.error('Error loading pals:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Improved function to load pals with better error handling
+  const loadPals = async () => {
+    if (!user) return;
     
-    loadFriends();
+    try {
+      setIsLoading(true);
+      
+      // Try to get pals from friends table in Supabase
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('friends')
+        .select('friend_id')
+        .eq('user_id', user.id);
+        
+      if (friendsError) {
+        throw friendsError;
+      }
+      
+      // If we have pals in the database
+      if (friendsData && friendsData.length > 0) {
+        const palIds = friendsData.map(f => f.friend_id);
+        
+        // Get the profile data for each pal
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', palIds);
+          
+        if (profilesError) {
+          throw profilesError;
+        }
+        
+        if (profilesData) {
+          const formattedPals = profilesData.map(profile => ({
+            id: profile.id,
+            username: profile.username || 'pal',
+            displayName: profile.username || 'Pal',
+            avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+            bio: profile.bio || '',
+            isPro: profile.is_pro || false,
+            createdAt: new Date(profile.updated_at || new Date())
+          }));
+          
+          setPals(formattedPals);
+          return;
+        }
+      }
+      
+      // Fallback to getFriends method
+      const friendsList = await getFriends();
+      setPals(friendsList);
+    } catch (error) {
+      console.error('Error loading pals:', error);
+      // Fallback to localStorage as last resort
+      const storedPals = localStorage.getItem('pals');
+      if (storedPals) {
+        try {
+          const parsedPals = JSON.parse(storedPals);
+          setPals(parsedPals);
+        } catch (e) {
+          console.error('Error parsing stored pals:', e);
+          setPals([]);
+        }
+      } else {
+        setPals([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    loadPals();
   }, [user, getFriends]);
 
-  const handleStartChat = async (friendId: string) => {
+  const handleStartChat = async (palId: string) => {
     try {
-      const chatId = await startNewChat(friendId);
+      const chatId = await startNewChat(palId);
       if (chatId) {
         navigate('/chat');
       }
     } catch (error) {
       console.error('Error starting chat:', error);
       toast.error("Couldn't start chat. Please try again.", {
-        duration: 3000
+        duration: 10000
       });
     }
   };
@@ -55,15 +112,11 @@ const PalsPage: React.FC = () => {
     
     setIsRefreshing(true);
     try {
-      const friendsList = await getFriends();
-      setFriends(friendsList);
-      toast.success("Pals list updated", {
-        duration: 2000
-      });
+      await loadPals();
     } catch (error) {
       console.error('Error refreshing pals:', error);
       toast.error("Couldn't refresh pals list", {
-        duration: 3000
+        duration: 10000
       });
     } finally {
       setIsRefreshing(false);
@@ -85,7 +138,7 @@ const PalsPage: React.FC = () => {
             <RefreshCw className="h-5 w-5" />
           </Button>
           <Button 
-            onClick={() => navigate('/merge')}
+            onClick={() => navigate('/search')}
             className="bg-yellow-500 hover:bg-yellow-600 text-black"
             size="sm"
           >
@@ -107,13 +160,13 @@ const PalsPage: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : friends.length === 0 ? (
+      ) : pals.length === 0 ? (
         <div className="text-center py-10 border border-gray-800 rounded-lg bg-gray-900">
           <Users className="h-12 w-12 mx-auto mb-3 text-yellow-500/50" />
           <h2 className="text-xl mb-2 text-yellow-500">No pals yet</h2>
           <p className="text-gray-400 mb-4">Find and connect with new friends!</p>
           <Button 
-            onClick={() => navigate('/merge')}
+            onClick={() => navigate('/search')}
             className="bg-yellow-500 hover:bg-yellow-600 text-black"
           >
             Find Pals
@@ -121,27 +174,27 @@ const PalsPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {friends.map((friend) => (
-            <div key={friend.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
+          {pals.map((pal) => (
+            <div key={pal.id} className="flex items-center justify-between p-4 border border-gray-800 rounded-lg bg-black hover:bg-gray-900 transition-colors">
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12 border border-yellow-500/30">
-                  <AvatarImage src={friend.avatar} />
+                  <AvatarImage src={pal.avatar} />
                   <AvatarFallback className="bg-gray-800">
-                    {friend.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
+                    {pal.username?.substring(0, 2).toUpperCase() || <UserRound className="h-6 w-6" />}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <h3 className="font-medium text-yellow-500">
-                    {friend.displayName || friend.username}
+                    {pal.displayName || pal.username}
                   </h3>
                   <p className="text-xs text-gray-400">
-                    {friend.bio || 'No bio yet'}
+                    {pal.bio || 'No bio yet'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={() => handleStartChat(friend.id)}
+                  onClick={() => handleStartChat(pal.id)}
                   variant="outline" 
                   size="sm"
                   className="flex items-center gap-1 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/10"
@@ -150,7 +203,7 @@ const PalsPage: React.FC = () => {
                   <span>Chat</span>
                 </Button>
                 <Button
-                  onClick={() => navigate(`/profile/${friend.id}`)}
+                  onClick={() => navigate(`/profile/${pal.id}`)}
                   variant="ghost" 
                   size="sm"
                   className="text-gray-400 hover:text-white"

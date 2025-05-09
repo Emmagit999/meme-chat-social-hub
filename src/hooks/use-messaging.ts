@@ -23,25 +23,39 @@ export const useMessaging = () => {
     }
   }, [chats, user]);
 
-  // Set up real-time listeners for messages
+  // Set up real-time listeners for messages with improved error handling
   useEffect(() => {
     if (!user) return;
 
+    // First ensure we're subscribed to messages via realtime
     const messagesChannel = supabase
       .channel('messages-channel')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
-        () => {
+        (payload) => {
+          console.log('New message received:', payload);
           // Refresh messages when the user receives a new message
-          if (chatSendMessage) {
-            const refreshChats = async () => {
-              try {
-                await getFriends();
-              } catch (error) {
-                console.error('Error refreshing chats:', error);
-              }
-            };
-            refreshChats();
+          if (getFriends) {
+            getFriends().catch(err => {
+              console.error('Error refreshing friends after message:', err);
+            });
+          }
+        }
+      )
+      .subscribe();
+      
+    // Also listen for chat updates
+    const chatsChannel = supabase
+      .channel('chats-channel')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'chats' },
+        (payload) => {
+          console.log('Chat updated:', payload);
+          // Ensure both participants in the chat are refreshed
+          if (getFriends) {
+            getFriends().catch(err => {
+              console.error('Error refreshing friends after chat update:', err);
+            });
           }
         }
       )
@@ -49,10 +63,11 @@ export const useMessaging = () => {
       
     return () => {
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(chatsChannel);
     };
-  }, [user, chatSendMessage, getFriends]);
+  }, [user, getFriends]);
 
-  // Message sending wrapper with optimistic update
+  // Enhanced message sending with better error handling
   const sendMessage = async (content: string) => {
     if (!content.trim() || !activeChat) return;
     
@@ -80,7 +95,7 @@ export const useMessaging = () => {
         created_at: new Date().toISOString()
       };
       
-      // Directly insert into the messages table instead of using UUID from Date.now()
+      // Directly insert into the messages table first
       const { data, error } = await supabase
         .from('messages')
         .insert(messageData)
@@ -92,8 +107,8 @@ export const useMessaging = () => {
         throw error;
       }
       
-      // Update the last message in the chat
-      await supabase
+      // Update the last message in the chat with better error handling
+      const { error: chatError } = await supabase
         .from('chats')
         .update({
           last_message: content,
@@ -101,15 +116,22 @@ export const useMessaging = () => {
         })
         .eq('id', activeChat);
         
+      if (chatError) {
+        console.error("Error updating chat:", chatError);
+        // Don't throw here, we want to continue even if chat update fails
+      }
+        
       // Now call the chat function to update the UI
-      await chatSendMessage(content);
+      if (chatSendMessage) {
+        await chatSendMessage(content);
+      }
       
       return data;
     } catch (error) {
       console.error('Error sending message:', error);
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
       toast.error("Failed to send message. Please try again.", {
-        duration: 3000
+        duration: 10000
       });
       throw error;
     } finally {
@@ -117,7 +139,7 @@ export const useMessaging = () => {
     }
   };
 
-  // Connection status check
+  // Better connection status monitoring
   useEffect(() => {
     const checkConnection = () => {
       setIsConnected(navigator.onLine);
@@ -134,30 +156,33 @@ export const useMessaging = () => {
     };
   }, []);
 
-  const reconnect = useCallback(() => {
+  const reconnect = useCallback(async () => {
     if (!navigator.onLine) {
       toast.error("No internet connection", {
-        duration: 3000
+        duration: 10000
       });
       return;
     }
     
-    toast.loading("Reconnecting...", {
-      duration: 2000
-    });
-    
-    // Simulate reconnection
-    setTimeout(() => {
-      setIsConnected(true);
-      toast.success("Reconnected successfully", {
-        duration: 2000
-      });
+    try {
+      // Silent reconnection attempt
+      setIsConnected(false);
       
-      // Refresh data
+      // Try to re-establish connection with Supabase
+      await supabase.auth.refreshSession();
+      
+      // Try to fetch friends data to verify connection
       if (getFriends) {
-        getFriends();
+        await getFriends();
       }
-    }, 1000);
+      
+      setIsConnected(true);
+    } catch (error) {
+      console.error('Error during reconnection:', error);
+      toast.error("Connection issue detected. Please check your internet.", {
+        duration: 10000
+      });
+    }
   }, [getFriends]);
 
   // Set loading state to false once we have data

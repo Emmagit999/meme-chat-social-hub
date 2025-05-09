@@ -19,8 +19,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           closeButton: "group-[.toast]:text-foreground/50 hover:text-foreground",
         },
       }}
-      // Set default duration for all toasts to 5 seconds
-      duration={5000}
+      // Set default duration for all toasts to 10 seconds
+      duration={10000}
       position="top-center"
       richColors
       closeButton

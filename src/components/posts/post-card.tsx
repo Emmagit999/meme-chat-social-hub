@@ -45,8 +45,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [isLiked, setIsLiked] = useState(() => isPostLiked(post.id));
   const [isAnimating, setIsAnimating] = useState(false);
   const [localLikeCount, setLocalLikeCount] = useState(post.likes);
-  const [shouldAutoplay, setShouldAutoplay] = useState(false);
   const [userClickedPlay, setUserClickedPlay] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
 
   // Update isLiked whenever likedPosts changes
   useEffect(() => {
@@ -80,7 +80,6 @@ export const PostCard: React.FC<PostCardProps> = ({
   const handleUserProfile = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Navigate directly to the user's profile page
     navigate(`/profile/${post.userId}`);
   };
 
@@ -94,7 +93,6 @@ export const PostCard: React.FC<PostCardProps> = ({
 
   const handleVideoClick = () => {
     if (!isMobile) {
-      // On desktop, toggle play/pause on click
       if (videoRef.current) {
         if (videoRef.current.paused) {
           videoRef.current.play().catch(e => console.log("Video play error:", e));
@@ -107,7 +105,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     }
   };
 
-  // Enhanced Intersection Observer for videos - only autoplay on mobile devices
+  // Improved video handling - only plays when visible and clicked
   useEffect(() => {
     if (!videoRef.current || !post.video) return;
     
@@ -115,11 +113,10 @@ export const PostCard: React.FC<PostCardProps> = ({
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            setShouldAutoplay(true);
-            // Only autoplay on mobile or if user has clicked play before
-            if (isMobile || userClickedPlay) {
+            // Don't autoplay on desktop - wait for user click
+            if (isMobile) {
               videoRef.current?.play().catch(e => {
-                // Handle autoplay restrictions by muting the video first
+                // Handle autoplay restrictions by muting
                 if (videoRef.current) {
                   videoRef.current.muted = true;
                   videoRef.current.play().catch(err => 
@@ -129,7 +126,7 @@ export const PostCard: React.FC<PostCardProps> = ({
               });
             }
           } else {
-            setShouldAutoplay(false);
+            // Pause when not in view
             if (videoRef.current && !videoRef.current.paused) {
               videoRef.current?.pause();
             }
@@ -148,17 +145,7 @@ export const PostCard: React.FC<PostCardProps> = ({
     };
   }, [post.video, isMobile, userClickedPlay]);
 
-  // Make sure videos are properly sized
-  useEffect(() => {
-    if (videoRef.current && post.video) {
-      videoRef.current.style.width = '100%';
-      videoRef.current.style.height = 'auto';
-      videoRef.current.style.maxHeight = '400px';
-      videoRef.current.style.objectFit = 'contain';
-      videoRef.current.style.margin = '0 auto';
-    }
-  }, [post.video]);
-
+  // Ensure proper media sizing and layout
   const getPostTypeBadgeStyles = () => {
     switch (post.type) {
       case 'meme':
@@ -200,7 +187,6 @@ export const PostCard: React.FC<PostCardProps> = ({
             </div>
           </div>
           
-          {/* Post type badge */}
           <Badge className={`${getPostTypeBadgeStyles()}`} variant="outline">
             {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
           </Badge>
@@ -209,43 +195,56 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Post content */}
         <p className="text-white mb-4">{post.content}</p>
         
-        {post.image && (
-          <img src={post.image} alt="Post" className="w-full rounded-md mb-4 object-contain max-h-[400px]" />
-        )}
-        
-        {post.video && (
-          <div className="relative">
-            <video 
-              ref={videoRef}
-              controls={isMobile || userClickedPlay}
-              className="w-full rounded-md mb-4 cursor-pointer"
-              playsInline
-              preload="metadata"
-              loop
-              onClick={handleVideoClick}
-              poster={post.video + '#t=0.1'} // Add a poster from the first frame
+        {/* Improved media layout with consistent sizing */}
+        <div className="media-container relative mb-4">
+          {post.image && (
+            <div className="flex justify-center">
+              <img 
+                src={post.image} 
+                alt="Post" 
+                className="rounded-md object-contain max-h-[400px] w-auto mx-auto"
+              />
+            </div>
+          )}
+          
+          {post.video && (
+            <div 
+              className="relative flex justify-center"
+              onMouseEnter={() => !isMobile && setIsHovering(true)}
+              onMouseLeave={() => !isMobile && setIsHovering(false)}
             >
-              <source src={post.video} type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
-            {!isMobile && !userClickedPlay && shouldAutoplay && (
-              <div 
-                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md cursor-pointer"
+              <video 
+                ref={videoRef}
+                controls={isMobile || userClickedPlay}
+                className="rounded-md w-auto mx-auto max-h-[400px] object-contain"
+                playsInline
+                preload="metadata"
+                loop
                 onClick={handleVideoClick}
+                poster={post.video + '#t=0.1'} // Add a poster from the first frame
               >
-                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                  </svg>
+                <source src={post.video} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+              {!isMobile && !userClickedPlay && (isHovering || !userClickedPlay) && (
+                <div 
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md cursor-pointer"
+                  onClick={handleVideoClick}
+                >
+                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
+                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
       
-      {/* Post actions */}
-      <div className="flex items-center justify-between p-4 border-t border-gray-800 text-gray-400">
+      {/* Post actions - improved visibility */}
+      <div className="flex items-center justify-between p-4 border-t border-gray-800 text-gray-400 bg-black">
         <div className="flex items-center gap-4">
           <button 
             className={`flex items-center gap-2 transition-colors p-2 rounded-full hover:bg-gray-800 ${isLiked ? 'text-yellow-500' : 'hover:text-yellow-500 text-gray-400'}`}
