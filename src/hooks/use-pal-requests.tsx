@@ -9,7 +9,7 @@ export type PalRequest = {
   id: string;
   sender_id: string;
   receiver_id: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'requested';
   created_at: Date;
   sender?: User;
   receiver?: User;
@@ -32,10 +32,10 @@ export function usePalRequests() {
     try {
       console.log("Fetching pal requests for user:", user.id);
       
-      // Get sent requests (simulated from friends table where established=false)
+      // Get sent requests (from friends table where user_id is current user)
       const { data: sentData, error: sentError } = await supabase
         .from('friends')
-        .select('*, profiles!friends_friend_id_fkey(*)')
+        .select('*, receiver:profiles!friends_friend_id_fkey(*)')
         .eq('user_id', user.id);
       
       if (sentError) {
@@ -45,10 +45,10 @@ export function usePalRequests() {
       
       console.log("Sent pal requests (from friends table):", sentData);
       
-      // Get received requests (simulated from friends table where established=false)
+      // Get received requests (from friends table where friend_id is current user)
       const { data: receivedData, error: receivedError } = await supabase
         .from('friends')
-        .select('*, profiles!friends_user_id_fkey(*)')
+        .select('*, sender:profiles!friends_user_id_fkey(*)')
         .eq('friend_id', user.id);
       
       if (receivedError) {
@@ -65,14 +65,14 @@ export function usePalRequests() {
         receiver_id: request.friend_id,
         status: 'requested' as const,
         created_at: new Date(request.created_at || new Date()),
-        receiver: request.profiles ? {
-          id: request.profiles.id,
-          username: request.profiles.username || '',
-          displayName: request.profiles.username || 'User',
-          avatar: request.profiles.avatar_url || '',
-          bio: request.profiles.bio || '',
-          isPro: request.profiles.is_pro || false,
-          createdAt: new Date(request.profiles.updated_at || new Date())
+        receiver: request.receiver ? {
+          id: request.receiver.id,
+          username: request.receiver.username || '',
+          displayName: request.receiver.username || 'User',
+          avatar: request.receiver.avatar_url || '',
+          bio: request.receiver.bio || '',
+          isPro: request.receiver.is_pro || false,
+          createdAt: new Date(request.receiver.updated_at || new Date())
         } : undefined
       })) || [];
       
@@ -82,14 +82,14 @@ export function usePalRequests() {
         receiver_id: user.id,
         status: 'pending' as const,
         created_at: new Date(request.created_at || new Date()),
-        sender: request.profiles ? {
-          id: request.profiles.id,
-          username: request.profiles.username || '',
-          displayName: request.profiles.username || 'User',
-          avatar: request.profiles.avatar_url || '',
-          bio: request.profiles.bio || '',
-          isPro: request.profiles.is_pro || false,
-          createdAt: new Date(request.profiles.updated_at || new Date())
+        sender: request.sender ? {
+          id: request.sender.id,
+          username: request.sender.username || '',
+          displayName: request.sender.username || 'User',
+          avatar: request.sender.avatar_url || '',
+          bio: request.sender.bio || '',
+          isPro: request.sender.is_pro || false,
+          createdAt: new Date(request.sender.updated_at || new Date())
         } : undefined
       })) || [];
       

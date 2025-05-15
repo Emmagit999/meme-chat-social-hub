@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { MessageCircle, UserPlus, UserCheck, Clock, Loader2 } from "lucide-react";
@@ -5,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { usePalRequests } from '@/hooks/use-pal-requests';
 import { useChat } from '@/hooks/use-chat';
 import { User } from '@/types';
-import { useAuth } from '@/context/auth-context';
+import { useAuth } from '@/hooks/use-auth';
 
 interface ProfileActionsProps {
   profileUser: User;
