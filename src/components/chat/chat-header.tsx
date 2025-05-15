@@ -11,7 +11,7 @@ interface ChatHeaderProps {
   userId: string;
   onBackClick?: () => void;
   showBackButton?: boolean;
-  isConnected?: boolean; // Added isConnected as an optional prop
+  isConnected?: boolean;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ 
@@ -20,12 +20,18 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   userId,
   onBackClick,
   showBackButton = false,
-  isConnected = true // Default to true
+  isConnected = true
 }) => {
   const navigate = useNavigate();
 
   const handleProfileClick = () => {
     navigate(`/profile/${userId}`);
+  };
+
+  const handleBackClick = () => {
+    if (onBackClick) {
+      onBackClick();
+    }
   };
 
   return (
@@ -34,7 +40,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
         <Button 
           variant="ghost" 
           size="icon" 
-          onClick={onBackClick}
+          onClick={handleBackClick}
           className="mr-2 text-yellow-500 hover:text-yellow-400 hover:bg-gray-900"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -58,7 +64,12 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           </div>
         )}
       </div>
-      <Button variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900"
+        onClick={() => navigate(`/profile/${userId}`)}
+      >
         <MoreVertical className="h-5 w-5" />
       </Button>
     </div>

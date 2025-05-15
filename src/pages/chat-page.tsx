@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -295,7 +295,7 @@ const ChatPage: React.FC = () => {
                 avatarSrc={getOtherUser(activeChat).avatar}
                 userId={getOtherUser(activeChat).id}
                 onBackClick={handleBackToList}
-                showBackButton={isMobile}
+                showBackButton={true} // Always show back button for better navigation
                 isConnected={isConnected}
               />
               
@@ -357,7 +357,19 @@ const ChatPage: React.FC = () => {
               />
             </>
           ) : (
-            <EmptyState />
+            <div className="h-full relative">
+              {isMobile && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-3 left-3 z-10 text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
+                  onClick={() => navigate(-1)}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              )}
+              <EmptyState />
+            </div>
           )}
         </div>
       </div>

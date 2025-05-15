@@ -22,6 +22,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const [characterCount, setCharacterCount] = useState(0);
   const MAX_CHARACTERS = 500;
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Focus input on mount
   useEffect(() => {
@@ -30,14 +31,21 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     }
   }, []);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!messageText.trim() || !isConnected || isSending) return;
     
-    onSendMessage(messageText);
-    setMessageText('');
-    setCharacterCount(0);
-    inputRef.current?.focus();
+    // Prevent duplicate submissions
+    if (isSubmitting || isSending || !messageText.trim() || !isConnected) return;
+    
+    try {
+      setIsSubmitting(true);
+      await onSendMessage(messageText);
+      setMessageText('');
+      setCharacterCount(0);
+    } finally {
+      setIsSubmitting(false);
+      inputRef.current?.focus();
+    }
   };
 
   const insertEmoji = (emoji: string) => {
@@ -103,7 +111,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               isOverLimit ? 'border-red-500' : ''
             }`}
             autoFocus
-            disabled={!isConnected || isSending}
+            disabled={!isConnected || isSending || isSubmitting}
           />
           <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-xs ${
             isNearLimit ? 'text-yellow-500' : 'text-gray-500'
@@ -117,9 +125,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <Button 
           type="submit" 
           className="bg-yellow-500 hover:bg-yellow-600 text-black rounded-full h-10 w-10 p-0 flex items-center justify-center"
-          disabled={!messageText.trim() || !isConnected || isSending}
+          disabled={!messageText.trim() || !isConnected || isSending || isSubmitting}
         >
-          {isSending ? (
+          {isSending || isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Send className="h-5 w-5" />

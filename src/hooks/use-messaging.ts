@@ -67,9 +67,9 @@ export const useMessaging = () => {
     };
   }, [user, getFriends]);
 
-  // Enhanced message sending with better error handling
+  // Enhanced message sending with better error handling and prevention of double sending
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !activeChat) return;
+    if (!content.trim() || !activeChat || isSending) return; // Prevent sending if already sending
     
     try {
       setIsSending(true);
@@ -120,7 +120,7 @@ export const useMessaging = () => {
         console.error("Error updating chat:", chatError);
         // Don't throw here, we want to continue even if chat update fails
       }
-        
+      
       // Now call the chat function to update the UI
       if (chatSendMessage) {
         await chatSendMessage(content);
@@ -131,10 +131,11 @@ export const useMessaging = () => {
       console.error('Error sending message:', error);
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
       toast.error("Failed to send message. Please try again.", {
-        duration: 10000
+        duration: 5000
       });
       throw error;
     } finally {
+      // Make sure isSending is always reset
       setIsSending(false);
     }
   };
@@ -159,7 +160,7 @@ export const useMessaging = () => {
   const reconnect = useCallback(async () => {
     if (!navigator.onLine) {
       toast.error("No internet connection", {
-        duration: 10000
+        duration: 5000
       });
       return;
     }
@@ -180,7 +181,7 @@ export const useMessaging = () => {
     } catch (error) {
       console.error('Error during reconnection:', error);
       toast.error("Connection issue detected. Please check your internet.", {
-        duration: 10000
+        duration: 5000
       });
     }
   }, [getFriends]);
