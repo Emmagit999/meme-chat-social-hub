@@ -35,7 +35,7 @@ export function usePalRequests() {
       // Get sent requests (from friends table where user_id is current user)
       const { data: sentData, error: sentError } = await supabase
         .from('friends')
-        .select('*, receiver:profiles!friends_friend_id_fkey(*)')
+        .select('*')
         .eq('user_id', user.id);
       
       if (sentError) {
@@ -48,7 +48,7 @@ export function usePalRequests() {
       // Get received requests (from friends table where friend_id is current user)
       const { data: receivedData, error: receivedError } = await supabase
         .from('friends')
-        .select('*, sender:profiles!friends_user_id_fkey(*)')
+        .select('*')
         .eq('friend_id', user.id);
       
       if (receivedError) {
@@ -57,48 +57,75 @@ export function usePalRequests() {
       }
       
       console.log("Received pal requests (from friends table):", receivedData);
+
+      // Fetch all profiles for the users we need
+      const senderIds = receivedData?.map(request => request.user_id) || [];
+      const receiverIds = sentData?.map(request => request.friend_id) || [];
+      const allUserIds = [...senderIds, ...receiverIds];
       
-      // Format the data to match our PalRequest type
-      const formattedSentRequests = sentData?.map(request => ({
-        id: request.id,
-        sender_id: user.id,
-        receiver_id: request.friend_id,
-        status: 'requested' as const,
-        created_at: new Date(request.created_at || new Date()),
-        receiver: request.receiver ? {
-          id: request.receiver.id,
-          username: request.receiver.username || '',
-          displayName: request.receiver.username || 'User',
-          avatar: request.receiver.avatar_url || '',
-          bio: request.receiver.bio || '',
-          isPro: request.receiver.is_pro || false,
-          createdAt: new Date(request.receiver.updated_at || new Date())
-        } : undefined
-      })) || [];
-      
-      const formattedReceivedRequests = receivedData?.map(request => ({
-        id: request.id,
-        sender_id: request.user_id,
-        receiver_id: user.id,
-        status: 'pending' as const,
-        created_at: new Date(request.created_at || new Date()),
-        sender: request.sender ? {
-          id: request.sender.id,
-          username: request.sender.username || '',
-          displayName: request.sender.username || 'User',
-          avatar: request.sender.avatar_url || '',
-          bio: request.sender.bio || '',
-          isPro: request.sender.is_pro || false,
-          createdAt: new Date(request.sender.updated_at || new Date())
-        } : undefined
-      })) || [];
-      
-      setSentRequests(formattedSentRequests);
-      setReceivedRequests(formattedReceivedRequests);
-      
-      // Set the count of pending received requests
-      const pendingCount = formattedReceivedRequests.filter(r => r.status === 'pending').length;
-      setRequestCount(pendingCount);
+      if (allUserIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', allUserIds);
+          
+        if (profilesError) {
+          console.error("Error fetching profiles:", profilesError);
+          throw profilesError;
+        }
+        
+        // Create a map of user profiles for easy lookup
+        const profilesMap: Record<string, any> = {};
+        profilesData?.forEach(profile => {
+          profilesMap[profile.id] = profile;
+        });
+        
+        // Format the data to match our PalRequest type
+        const formattedSentRequests = sentData?.map(request => ({
+          id: request.id,
+          sender_id: user.id,
+          receiver_id: request.friend_id,
+          status: 'requested' as const,
+          created_at: new Date(request.created_at || new Date()),
+          receiver: profilesMap[request.friend_id] ? {
+            id: profilesMap[request.friend_id].id,
+            username: profilesMap[request.friend_id].username || '',
+            displayName: profilesMap[request.friend_id].username || 'User',
+            avatar: profilesMap[request.friend_id].avatar_url || '',
+            bio: profilesMap[request.friend_id].bio || '',
+            isPro: profilesMap[request.friend_id].is_pro || false,
+            createdAt: new Date(profilesMap[request.friend_id].updated_at || new Date())
+          } : undefined
+        })) || [];
+        
+        const formattedReceivedRequests = receivedData?.map(request => ({
+          id: request.id,
+          sender_id: request.user_id,
+          receiver_id: user.id,
+          status: 'pending' as const,
+          created_at: new Date(request.created_at || new Date()),
+          sender: profilesMap[request.user_id] ? {
+            id: profilesMap[request.user_id].id,
+            username: profilesMap[request.user_id].username || '',
+            displayName: profilesMap[request.user_id].username || 'User',
+            avatar: profilesMap[request.user_id].avatar_url || '',
+            bio: profilesMap[request.user_id].bio || '',
+            isPro: profilesMap[request.user_id].is_pro || false,
+            createdAt: new Date(profilesMap[request.user_id].updated_at || new Date())
+          } : undefined
+        })) || [];
+        
+        setSentRequests(formattedSentRequests);
+        setReceivedRequests(formattedReceivedRequests);
+        
+        // Set the count of pending received requests
+        const pendingCount = formattedReceivedRequests.filter(r => r.status === 'pending').length;
+        setRequestCount(pendingCount);
+      } else {
+        setSentRequests([]);
+        setReceivedRequests([]);
+        setRequestCount(0);
+      }
     } catch (error) {
       console.error("Error in loadPalRequests:", error);
       
