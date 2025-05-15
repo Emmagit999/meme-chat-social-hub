@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
 import { useAuth } from "@/hooks/use-auth";
-import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle, ArrowLeft } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -14,7 +14,6 @@ import { ChatMessage } from "@/components/chat/chat-message";
 import { MessageInput } from "@/components/chat/message-input";
 import { User } from '@/types';
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const EmptyState = () => (
@@ -67,6 +66,8 @@ const ChatPage: React.FC = () => {
     activeChat, 
     setActiveChat,
     sendMessage,
+    deleteMessage,
+    editMessage,
     isLoading,
     isSending,
     isConnected,
@@ -76,6 +77,7 @@ const ChatPage: React.FC = () => {
     lastError
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [showChatList, setShowChatList] = useState(!isMobile || !activeChat);
@@ -99,7 +101,9 @@ const ChatPage: React.FC = () => {
   
   useEffect(() => {
     // Scroll to bottom when messages change
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   }, [messages]);
 
   useEffect(() => {
@@ -122,7 +126,17 @@ const ChatPage: React.FC = () => {
     if (isMobile) {
       setActiveChat(null);
       setShowChatList(true);
+    } else {
+      navigate('/pals'); // On desktop, back button goes to pals page
     }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    await deleteMessage(messageId);
+  };
+  
+  const handleEditMessage = async (messageId: string, content: string) => {
+    await editMessage(messageId, content);
   };
   
   if (!user) return null;
@@ -252,7 +266,7 @@ const ChatPage: React.FC = () => {
                             <p className="font-medium text-yellow-500">{otherUser.name}</p>
                             {chat.lastMessageDate && (
                               <span className="text-xs text-gray-400">
-                                {format(chat.lastMessageDate, 'h:mm a')}
+                                {format(new Date(chat.lastMessageDate), 'h:mm a')}
                               </span>
                             )}
                           </div>
@@ -299,7 +313,7 @@ const ChatPage: React.FC = () => {
                 isConnected={isConnected}
               />
               
-              <ScrollArea className="flex-1 p-4 bg-gray-900">
+              <ScrollArea className="flex-1 p-4 bg-gray-900" ref={scrollAreaRef}>
                 {!isConnected && (
                   <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
                     <WifiOff className="h-4 w-4 mr-2" />
@@ -320,14 +334,6 @@ const ChatPage: React.FC = () => {
                   <div className="mb-4 p-3 bg-amber-900/20 text-amber-500 rounded-md flex items-center">
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     <span className="flex-1">There was an error sending your last message. Please try again.</span>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="ml-2 border-amber-500 text-amber-500 hover:bg-amber-500/20"
-                      onClick={() => toast.error("Message error: " + lastError.message, { duration: 5000 })}
-                    >
-                      Details
-                    </Button>
                   </div>
                 )}
                 
@@ -343,6 +349,8 @@ const ChatPage: React.FC = () => {
                         message={message}
                         currentUser={currentUser}
                         otherUserAvatar={getOtherUserAvatar(activeChat)}
+                        onDeleteMessage={handleDeleteMessage}
+                        onEditMessage={handleEditMessage}
                       />
                     ))}
                     <div ref={messageEndRef} />
@@ -358,16 +366,14 @@ const ChatPage: React.FC = () => {
             </>
           ) : (
             <div className="h-full relative">
-              {isMobile && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-3 left-3 z-10 text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
-                  onClick={() => navigate(-1)}
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-3 left-3 z-10 text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
+                onClick={() => navigate('/pals')}
+              >
+                <Users className="h-5 w-5" />
+              </Button>
               <EmptyState />
             </div>
           )}

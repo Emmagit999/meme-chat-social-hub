@@ -36,16 +36,14 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
   return (
     <div className="p-3 border-b border-gray-700 bg-black flex items-center">
-      {showBackButton && (
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={handleBackClick}
-          className="mr-2 text-yellow-500 hover:text-yellow-400 hover:bg-gray-900"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-      )}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        onClick={handleBackClick}
+        className="mr-2 text-yellow-500 hover:text-yellow-400 hover:bg-gray-900"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </Button>
       <div 
         className="flex items-center flex-1 cursor-pointer" 
         onClick={handleProfileClick}

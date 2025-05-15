@@ -87,8 +87,12 @@ export const useMessaging = () => {
         throw new Error("Receiver not found");
       }
       
+      // Generate a client-side ID to prevent duplicates
+      const clientMessageId = Date.now().toString();
+      
       // Prepare the message object
       const messageData = {
+        id: clientMessageId,
         content,
         sender_id: user.id,
         receiver_id: receiverId,
@@ -130,13 +134,47 @@ export const useMessaging = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
-      toast.error("Failed to send message. Please try again.", {
-        duration: 5000
-      });
+      // Removed toast for the chat page
       throw error;
     } finally {
       // Make sure isSending is always reset
       setIsSending(false);
+    }
+  };
+
+  // Delete a message
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId);
+        
+      if (error) throw error;
+      
+      // Update UI - this should trigger a refresh via realtime
+      return true;
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      return false;
+    }
+  };
+
+  // Edit a message
+  const editMessage = async (messageId: string, newContent: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ content: newContent })
+        .eq('id', messageId);
+        
+      if (error) throw error;
+      
+      // Update UI - this should trigger a refresh via realtime
+      return true;
+    } catch (error) {
+      console.error('Error editing message:', error);
+      return false;
     }
   };
 
@@ -159,9 +197,7 @@ export const useMessaging = () => {
 
   const reconnect = useCallback(async () => {
     if (!navigator.onLine) {
-      toast.error("No internet connection", {
-        duration: 5000
-      });
+      // Removed toast for the chat page
       return;
     }
     
@@ -180,9 +216,7 @@ export const useMessaging = () => {
       setIsConnected(true);
     } catch (error) {
       console.error('Error during reconnection:', error);
-      toast.error("Connection issue detected. Please check your internet.", {
-        duration: 5000
-      });
+      // Removed toast for the chat page
     }
   }, [getFriends]);
 
@@ -199,6 +233,8 @@ export const useMessaging = () => {
     activeChat,
     setActiveChat,
     sendMessage,
+    deleteMessage,
+    editMessage,
     startNewChat,
     getSuggestedUsers,
     getUserById,
