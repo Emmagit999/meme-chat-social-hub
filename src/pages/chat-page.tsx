@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/context/auth-context";
 import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
@@ -34,27 +34,15 @@ const EmptyState = () => (
 
 const LoadingState = () => (
   <div className="flex flex-col gap-4 p-4">
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-12 w-12 rounded-full" />
-      <div className="space-y-2 flex-1">
-        <Skeleton className="h-4 w-1/3" />
-        <Skeleton className="h-3 w-1/2" />
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="flex items-center gap-3">
+        <Skeleton className="h-12 w-12 rounded-full" />
+        <div className="space-y-2 flex-1">
+          <Skeleton className="h-4 w-1/3" />
+          <Skeleton className="h-3 w-1/2" />
+        </div>
       </div>
-    </div>
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-12 w-12 rounded-full" />
-      <div className="space-y-2 flex-1">
-        <Skeleton className="h-4 w-1/4" />
-        <Skeleton className="h-3 w-1/3" />
-      </div>
-    </div>
-    <div className="flex items-center gap-3">
-      <Skeleton className="h-12 w-12 rounded-full" />
-      <div className="space-y-2 flex-1">
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-3 w-1/4" />
-      </div>
-    </div>
+    ))}
   </div>
 );
 
@@ -100,10 +88,10 @@ const ChatPage: React.FC = () => {
   }, [getSuggestedUsers]);
   
   useEffect(() => {
-    // Scroll to bottom when messages change
-    setTimeout(() => {
-      messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+    // Auto-scroll to bottom when messages change
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -291,10 +279,10 @@ const ChatPage: React.FC = () => {
             <div className="p-3 border-t border-gray-700 bg-black">
               <Button 
                 className="w-full bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-2"
-                onClick={() => navigate('/merge')}
+                onClick={() => navigate('/pals')}
               >
                 <Users className="h-4 w-4" />
-                Find New Pals
+                My Pals
               </Button>
             </div>
           </div>

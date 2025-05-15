@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useMessaging } from '@/hooks/use-messaging';
@@ -8,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { MessageCircle, UserRound, Users, RefreshCw, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePalRequests } from '@/hooks/use-pal-requests';
@@ -31,28 +29,48 @@ const PalsPage: React.FC = () => {
       
       // Try to get pals from friends table in Supabase - with enhanced error logging
       console.log("Fetching friends data for user:", user.id);
-      const { data: friendsData, error: friendsError } = await supabase
+      
+      // Get both sides of friendship to ensure we capture all friends
+      const { data: outgoingFriends, error: outgoingError } = await supabase
         .from('friends')
         .select('friend_id')
         .eq('user_id', user.id);
         
-      if (friendsError) {
-        console.error("Error fetching friends:", friendsError);
-        throw friendsError;
+      if (outgoingError) {
+        console.error("Error fetching outgoing friends:", outgoingError);
+        throw outgoingError;
       }
       
-      console.log("Friends data received:", friendsData);
-      
-      // If we have pals in the database
-      if (friendsData && friendsData.length > 0) {
-        const palIds = friendsData.map(f => f.friend_id);
-        console.log("Found pal IDs:", palIds);
+      const { data: incomingFriends, error: incomingError } = await supabase
+        .from('friends')
+        .select('user_id')
+        .eq('friend_id', user.id);
         
+      if (incomingError) {
+        console.error("Error fetching incoming friends:", incomingError);
+        throw incomingError;
+      }
+      
+      console.log("Outgoing friends data received:", outgoingFriends);
+      console.log("Incoming friends data received:", incomingFriends);
+      
+      // Combine both directions of friendship
+      const palIds = [
+        ...(outgoingFriends?.map(f => f.friend_id) || []),
+        ...(incomingFriends?.map(f => f.user_id) || [])
+      ];
+      
+      // Remove duplicates
+      const uniquePalIds = [...new Set(palIds)];
+      
+      console.log("Found unique pal IDs:", uniquePalIds);
+      
+      if (uniquePalIds.length > 0) {
         // Get the profile data for each pal
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .in('id', palIds);
+          .in('id', uniquePalIds);
           
         if (profilesError) {
           console.error("Error fetching profiles:", profilesError);
@@ -77,19 +95,22 @@ const PalsPage: React.FC = () => {
           
           // Cache successful results in localStorage as backup
           localStorage.setItem('pals', JSON.stringify(formattedPals));
-          return;
         }
       } else {
         console.log("No friends found in database, trying getFriends method");
+        
+        // Fallback to getFriends method
+        if (getFriends) {
+          const friendsList = await getFriends();
+          console.log("Friends from getFriends method:", friendsList);
+          setPals(friendsList);
+          
+          // Cache results
+          localStorage.setItem('pals', JSON.stringify(friendsList));
+        } else {
+          setPals([]);
+        }
       }
-      
-      // Fallback to getFriends method
-      const friendsList = await getFriends();
-      console.log("Friends from getFriends method:", friendsList);
-      setPals(friendsList);
-      
-      // Cache results
-      localStorage.setItem('pals', JSON.stringify(friendsList));
     } catch (error) {
       console.error('Error loading pals:', error);
       
@@ -107,11 +128,6 @@ const PalsPage: React.FC = () => {
       } else {
         setPals([]);
       }
-      
-      // Notify the user of the issue
-      toast.error("Had trouble loading your pals list", {
-        duration: 10000
-      });
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +145,7 @@ const PalsPage: React.FC = () => {
     const friendsChannel = supabase
       .channel('friends-changes')
       .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'friends', filter: `or(user_id=eq.${user.id},friend_id=eq.${user.id})` },
+        { event: '*', schema: 'public', table: 'friends' },
         (payload) => {
           console.log('Friends table change detected:', payload);
           loadPals(); // Reload pals when changes are detected
@@ -150,9 +166,6 @@ const PalsPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error starting chat:', error);
-      toast.error("Couldn't start chat. Please try again.", {
-        duration: 10000
-      });
     }
   };
   
@@ -163,14 +176,8 @@ const PalsPage: React.FC = () => {
     try {
       await loadPals();
       await loadPalRequests();
-      toast.success("Pals list refreshed", {
-        duration: 10000
-      });
     } catch (error) {
       console.error('Error refreshing pals:', error);
-      toast.error("Couldn't refresh pals list", {
-        duration: 10000
-      });
     } finally {
       setIsRefreshing(false);
     }

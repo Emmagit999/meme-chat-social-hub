@@ -5,7 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Message, User } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Edit, Trash2, MoreVertical } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessageProps {
   message: Message;
@@ -31,7 +30,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     // This is handled by the dropdown now
   };
   
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (onDeleteMessage) {
       onDeleteMessage(message.id);
     }
@@ -41,7 +40,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     setIsEditing(true);
   };
   
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (onEditMessage && editContent.trim() !== '') {
       onEditMessage(message.id, editContent);
       setIsEditing(false);

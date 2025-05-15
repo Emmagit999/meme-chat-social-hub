@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
 import { User, Message, Chat } from "@/types";
-import { toast } from "sonner";
 import { useChat } from "@/hooks/use-chat";
+import { v4 as uuidv4 } from 'uuid';
 
 export const useMessaging = () => {
   const { chats, messages, activeChat, setActiveChat, sendMessage: chatSendMessage, startNewChat, getSuggestedUsers, getUserById, registerUser, getFriends } = useChat();
@@ -87,12 +87,12 @@ export const useMessaging = () => {
         throw new Error("Receiver not found");
       }
       
-      // Generate a client-side ID to prevent duplicates
-      const clientMessageId = Date.now().toString();
+      // Generate a proper UUID for the message
+      const messageId = uuidv4();
       
       // Prepare the message object
       const messageData = {
-        id: clientMessageId,
+        id: messageId,
         content,
         sender_id: user.id,
         receiver_id: receiverId,
@@ -134,7 +134,6 @@ export const useMessaging = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
-      // Removed toast for the chat page
       throw error;
     } finally {
       // Make sure isSending is always reset
@@ -150,9 +149,16 @@ export const useMessaging = () => {
         .delete()
         .eq('id', messageId);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting message:", error);
+        throw error;
+      }
       
-      // Update UI - this should trigger a refresh via realtime
+      // Update UI - trigger a refresh via chatSendMessage to reload messages
+      if (chatSendMessage) {
+        await chatSendMessage(""); // This will refresh the messages
+      }
+      
       return true;
     } catch (error) {
       console.error('Error deleting message:', error);
@@ -168,9 +174,16 @@ export const useMessaging = () => {
         .update({ content: newContent })
         .eq('id', messageId);
         
-      if (error) throw error;
+      if (error) {
+        console.error("Error editing message:", error);
+        throw error;
+      }
       
-      // Update UI - this should trigger a refresh via realtime
+      // Update UI - trigger a refresh via chatSendMessage to reload messages
+      if (chatSendMessage) {
+        await chatSendMessage(""); // This will refresh the messages
+      }
+      
       return true;
     } catch (error) {
       console.error('Error editing message:', error);
@@ -196,10 +209,7 @@ export const useMessaging = () => {
   }, []);
 
   const reconnect = useCallback(async () => {
-    if (!navigator.onLine) {
-      // Removed toast for the chat page
-      return;
-    }
+    if (!navigator.onLine) return;
     
     try {
       // Silent reconnection attempt
@@ -216,7 +226,6 @@ export const useMessaging = () => {
       setIsConnected(true);
     } catch (error) {
       console.error('Error during reconnection:', error);
-      // Removed toast for the chat page
     }
   }, [getFriends]);
 
