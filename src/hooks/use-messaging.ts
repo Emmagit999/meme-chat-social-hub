@@ -71,7 +71,7 @@ export const useMessaging = () => {
 
   // Enhanced message sending with better error handling and prevention of double sending
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !activeChat || isSending) return; // Prevent sending if already sending
+    if (!content.trim() || !activeChat || isSending) return null; // Prevent sending if already sending
     
     try {
       setIsSending(true);
@@ -147,8 +147,8 @@ export const useMessaging = () => {
     }
   };
 
-  // Delete a message
-  const deleteMessage = async (messageId: string) => {
+  // Delete a message with proper error handling and feedback
+  const deleteMessage = async (messageId: string): Promise<boolean> => {
     if (isSending) return false; // Prevent operation if already sending
     
     try {
@@ -175,18 +175,20 @@ export const useMessaging = () => {
       return true;
     } catch (error) {
       console.error('Error deleting message:', error);
+      setLastError(error instanceof Error ? error : new Error("Failed to delete message"));
       return false;
     } finally {
       setIsSending(false);
     }
   };
 
-  // Edit a message
-  const editMessage = async (messageId: string, newContent: string) => {
-    if (isSending) return false; // Prevent operation if already sending
+  // Edit a message with proper error handling and feedback
+  const editMessage = async (messageId: string, newContent: string): Promise<boolean> => {
+    if (isSending || !newContent.trim()) return false;
     
     try {
       setIsSending(true);
+      setLastError(null);
       console.log("Attempting to edit message with ID:", messageId);
       
       const { error } = await supabase
@@ -209,6 +211,7 @@ export const useMessaging = () => {
       return true;
     } catch (error) {
       console.error('Error editing message:', error);
+      setLastError(error instanceof Error ? error : new Error("Failed to edit message"));
       return false;
     } finally {
       setIsSending(false);

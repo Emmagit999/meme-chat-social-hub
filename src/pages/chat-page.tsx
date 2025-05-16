@@ -1,10 +1,11 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
 import { useAuth } from "@/context/auth-context";
-import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -65,11 +66,14 @@ const ChatPage: React.FC = () => {
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [showChatList, setShowChatList] = useState(!isMobile || !activeChat);
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   
   useEffect(() => {
     // Fetch suggested users when component mounts
@@ -85,11 +89,46 @@ const ChatPage: React.FC = () => {
     
     fetchSuggestedUsers();
   }, [getSuggestedUsers]);
-  
+
+  // Handle scrolling behavior
   useEffect(() => {
-    // Auto-scroll to bottom when messages change
-    if (messageEndRef.current) {
-      messageEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    const handleScroll = () => {
+      if (!messagesContainerRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      
+      setShowScrollToBottom(!isNearBottom);
+      
+      // Track unread messages if not at bottom
+      if (!isNearBottom && messages.length > 0) {
+        const lastReadIndex = messages.findIndex(m => m.senderId !== user?.id && !m.read);
+        if (lastReadIndex >= 0) {
+          setUnreadCount(messages.length - lastReadIndex);
+        }
+      } else {
+        setUnreadCount(0);
+      }
+    };
+    
+    const messagesContainer = messagesContainerRef.current;
+    if (messagesContainer) {
+      messagesContainer.addEventListener('scroll', handleScroll);
+      return () => {
+        messagesContainer.removeEventListener('scroll', handleScroll);
+      };
+    }
+  }, [messages, user?.id]);
+  
+  // Auto-scroll to bottom for new messages
+  useEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0) {
+      const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+      
+      if (isNearBottom) {
+        scrollToBottom();
+      }
     }
   }, [messages]);
 
@@ -100,13 +139,25 @@ const ChatPage: React.FC = () => {
     } else {
       setShowChatList(true);
     }
+    
+    // Always scroll to bottom when chat changes
+    if (activeChat) {
+      setTimeout(scrollToBottom, 100);
+    }
   }, [isMobile, activeChat]);
+  
+  const scrollToBottom = () => {
+    if (messageEndRef.current) {
+      messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
   
   const handleChatSelect = (chatId: string) => {
     setActiveChat(chatId);
     if (isMobile) {
       setShowChatList(false);
     }
+    setTimeout(scrollToBottom, 300);
   };
   
   const handleBackToList = () => {
@@ -119,11 +170,11 @@ const ChatPage: React.FC = () => {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
-    await deleteMessage(messageId);
+    return await deleteMessage(messageId);
   };
   
   const handleEditMessage = async (messageId: string, content: string) => {
-    await editMessage(messageId, content);
+    return await editMessage(messageId, content);
   };
   
   if (!user) return null;
@@ -300,7 +351,11 @@ const ChatPage: React.FC = () => {
                 isConnected={isConnected}
               />
               
-              <div className="flex-1 overflow-y-auto p-4 bg-gray-900" style={{ height: 'calc(100% - 120px)' }}>
+              <div 
+                className="flex-1 overflow-y-auto p-4 bg-gray-900" 
+                style={{ height: 'calc(100% - 120px)' }}
+                ref={messagesContainerRef}
+              >
                 {!isConnected && (
                   <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
                     <WifiOff className="h-4 w-4 mr-2" />
@@ -329,21 +384,34 @@ const ChatPage: React.FC = () => {
                     No messages yet. Say hello!
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-1 pb-2">
                     {messages.map(message => (
                       <ChatMessage
                         key={message.id}
                         message={message}
                         currentUser={currentUser}
                         otherUserAvatar={getOtherUserAvatar(activeChat)}
-                        onDeleteMessage={deleteMessage}
-                        onEditMessage={editMessage}
+                        onDeleteMessage={handleDeleteMessage}
+                        onEditMessage={handleEditMessage}
                       />
                     ))}
                     <div ref={messageEndRef} />
                   </div>
                 )}
               </div>
+              
+              {/* Scroll to bottom button */}
+              {showScrollToBottom && (
+                <button 
+                  onClick={scrollToBottom} 
+                  className="absolute right-6 bottom-20 bg-yellow-500 text-black rounded-full p-2 shadow-lg flex items-center gap-1 z-20"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  {unreadCount > 0 && (
+                    <span className="text-xs font-bold">{unreadCount}</span>
+                  )}
+                </button>
+              )}
               
               <MessageInput 
                 onSendMessage={sendMessage}

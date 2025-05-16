@@ -6,7 +6,7 @@ import { Smile, Send, AlertCircle, Loader2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface MessageInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string) => Promise<any>;
   isSending: boolean;
   isConnected: boolean;
 }
@@ -24,11 +24,28 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Focus input on mount
+  // Focus input on mount and when scrolled into view
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    const focusInput = () => {
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+
+    focusInput();
+    
+    // Detect if mobile keyboard should be shown (when scrolled to bottom)
+    const handleScroll = () => {
+      const isAtBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 10;
+      if (isAtBottom) {
+        focusInput();
+      }
+    };
+    
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -42,9 +59,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       await onSendMessage(messageText);
       setMessageText('');
       setCharacterCount(0);
+    } catch (error) {
+      console.error("Error sending message:", error);
     } finally {
       setIsSubmitting(false);
-      inputRef.current?.focus();
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
     }
   };
 
@@ -53,7 +74,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       setMessageText(prev => prev + emoji);
       setCharacterCount(prev => prev + emoji.length);
     }
-    inputRef.current?.focus();
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +91,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const isNearLimit = characterCount > MAX_CHARACTERS * 0.9;
 
   return (
-    <div className="p-3 border-t border-gray-200 bg-black">
+    <div className="p-3 border-t border-gray-700 bg-black sticky bottom-0 z-10">
       {!isConnected && (
         <div className="flex items-center justify-center mb-2 bg-red-900/20 text-red-500 p-2 rounded-md">
           <AlertCircle className="h-4 w-4 mr-2" />
