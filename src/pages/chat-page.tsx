@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -133,7 +132,7 @@ const ChatPage: React.FC = () => {
   const currentUser: User = {
     ...user,
     createdAt: new Date(),
-    username: user.username || 'user',
+    username: user?.username || 'user',
   };
   
   // Find the other user in the active chat
@@ -141,7 +140,7 @@ const ChatPage: React.FC = () => {
     const chat = chats.find(c => c.id === chatId);
     if (!chat) return { name: "Unknown User", id: "", avatar: "/assets/avatar1.jpg" };
     
-    const otherUserId = chat.participants.find(id => id !== user.id);
+    const otherUserId = chat.participants.find(id => id !== user?.id);
     if (!otherUserId) return { name: "Unknown User", id: "", avatar: "/assets/avatar1.jpg" };
     
     const otherUser = suggestedUsers.find(u => u.id === otherUserId);
@@ -217,7 +216,7 @@ const ChatPage: React.FC = () => {
               />
             </div>
             
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 overflow-y-auto">
               {isLoading ? (
                 <LoadingState />
               ) : filteredChats.length === 0 ? (
@@ -228,7 +227,7 @@ const ChatPage: React.FC = () => {
                     className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-black"
                     onClick={() => navigate('/merge')}
                   >
-                    Find people
+                    Find People
                   </Button>
                 </div>
               ) : (
@@ -297,11 +296,11 @@ const ChatPage: React.FC = () => {
                 avatarSrc={getOtherUser(activeChat).avatar}
                 userId={getOtherUser(activeChat).id}
                 onBackClick={handleBackToList}
-                showBackButton={true} // Always show back button for better navigation
+                showBackButton={true}
                 isConnected={isConnected}
               />
               
-              <ScrollArea className="flex-1 p-4 bg-gray-900" ref={scrollAreaRef}>
+              <div className="flex-1 overflow-y-auto p-4 bg-gray-900" style={{ height: 'calc(100% - 120px)' }}>
                 {!isConnected && (
                   <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
                     <WifiOff className="h-4 w-4 mr-2" />
@@ -337,14 +336,14 @@ const ChatPage: React.FC = () => {
                         message={message}
                         currentUser={currentUser}
                         otherUserAvatar={getOtherUserAvatar(activeChat)}
-                        onDeleteMessage={handleDeleteMessage}
-                        onEditMessage={handleEditMessage}
+                        onDeleteMessage={deleteMessage}
+                        onEditMessage={editMessage}
                       />
                     ))}
                     <div ref={messageEndRef} />
                   </div>
                 )}
-              </ScrollArea>
+              </div>
               
               <MessageInput 
                 onSendMessage={sendMessage}

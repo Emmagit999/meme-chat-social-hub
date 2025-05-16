@@ -19,7 +19,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   avatarSrc = "/assets/avatar1.jpg",
   userId,
   onBackClick,
-  showBackButton = true, // Changed to true by default to always show back button
+  showBackButton = true, // Always show back button by default
   isConnected = true
 }) => {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   };
 
   return (
-    <div className="p-3 border-b border-gray-700 bg-black flex items-center">
+    <div className="p-3 border-b border-gray-700 bg-black flex items-center sticky top-0 z-10">
       {showBackButton && (
         <Button 
           variant="ghost" 

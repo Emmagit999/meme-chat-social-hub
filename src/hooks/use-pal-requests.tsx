@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from './use-auth';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,7 +60,7 @@ export function usePalRequests() {
       // Fetch all profiles for the users we need
       const senderIds = receivedData?.map(request => request.user_id) || [];
       const receiverIds = sentData?.map(request => request.friend_id) || [];
-      const allUserIds = [...senderIds, ...receiverIds];
+      const allUserIds = [...new Set([...senderIds, ...receiverIds])];
       
       if (allUserIds.length > 0) {
         const { data: profilesData, error: profilesError } = await supabase
@@ -73,6 +72,8 @@ export function usePalRequests() {
           console.error("Error fetching profiles:", profilesError);
           throw profilesError;
         }
+        
+        console.log("Retrieved profiles for pals:", profilesData);
         
         // Create a map of user profiles for easy lookup
         const profilesMap: Record<string, any> = {};
@@ -121,6 +122,10 @@ export function usePalRequests() {
         // Set the count of pending received requests
         const pendingCount = formattedReceivedRequests.filter(r => r.status === 'pending').length;
         setRequestCount(pendingCount);
+        
+        // Save to localStorage for offline access
+        localStorage.setItem('sentPalRequests', JSON.stringify(formattedSentRequests));
+        localStorage.setItem('receivedPalRequests', JSON.stringify(formattedReceivedRequests));
       } else {
         setSentRequests([]);
         setReceivedRequests([]);
@@ -164,8 +169,8 @@ export function usePalRequests() {
       const { data: existingRequest, error: checkError } = await supabase
         .from('friends')
         .select('*')
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${receiverId}),and(user_id.eq.${receiverId},friend_id.eq.${user.id})`)
-        .single();
+        .or(`and(user_id.eq.${user?.id},friend_id.eq.${receiverId}),and(user_id.eq.${receiverId},friend_id.eq.${user?.id})`)
+        .maybeSingle();
       
       if (checkError && checkError.code !== 'PGRST116') {
         console.error("Error checking existing request:", checkError);
@@ -174,9 +179,7 @@ export function usePalRequests() {
       
       // If a request already exists, don't create a new one
       if (existingRequest) {
-        toast.info("A pal request already exists between you and this user", {
-          duration: 10000
-        });
+        console.log("A pal request already exists");
         return false;
       }
       
@@ -184,7 +187,7 @@ export function usePalRequests() {
       const { data, error } = await supabase
         .from('friends')
         .insert({
-          user_id: user.id,
+          user_id: user?.id,
           friend_id: receiverId
         })
         .select()
@@ -192,39 +195,17 @@ export function usePalRequests() {
       
       if (error) {
         console.error("Error sending pal request:", error);
-        toast.error("Couldn't send pal request. Please try again.", {
-          duration: 10000
-        });
         return false;
       }
       
       console.log("Pal request sent:", data);
       
-      // Create a notification for the receiver
-      await supabase
-        .from('notifications')
-        .insert({
-          user_id: receiverId,
-          from_user_id: user.id,
-          from_username: user.username || 'A user',
-          type: 'friend',
-          content: `${user.username || 'Someone'} sent you a pal request`,
-          avatar: user.avatar
-        });
-      
       // Refresh the requests list
       loadPalRequests();
-      
-      toast.success("Pal request sent!", {
-        duration: 10000
-      });
       
       return true;
     } catch (error) {
       console.error("Error in sendPalRequest:", error);
-      toast.error("Couldn't send pal request. Please try again.", {
-        duration: 10000
-      });
       return false;
     }
   };
@@ -246,33 +227,24 @@ export function usePalRequests() {
         throw requestError;
       }
       
-      // No need to update status - friends table already represents the connection
-      
       // Create a notification for the sender
       await supabase
         .from('notifications')
         .insert({
           user_id: requestData.user_id,
-          from_user_id: user.id,
-          from_username: user.username || 'A user',
+          from_user_id: user?.id,
+          from_username: user?.username || 'A user',
           type: 'friend',
-          content: `${user.username || 'Someone'} accepted your pal request`,
-          avatar: user.avatar
+          content: `${user?.username || 'Someone'} accepted your pal request`,
+          avatar: user?.avatar
         });
       
       // Refresh the requests list
       loadPalRequests();
       
-      toast.success("Pal request accepted!", {
-        duration: 10000
-      });
-      
       return true;
     } catch (error) {
       console.error("Error in acceptPalRequest:", error);
-      toast.error("Couldn't accept pal request. Please try again.", {
-        duration: 10000
-      });
       return false;
     }
   };
@@ -290,39 +262,31 @@ export function usePalRequests() {
       
       if (error) {
         console.error("Error rejecting pal request:", error);
-        toast.error("Couldn't reject pal request. Please try again.", {
-          duration: 10000
-        });
         return false;
       }
       
       // Refresh the requests list
       loadPalRequests();
       
-      toast.success("Pal request rejected", {
-        duration: 10000
-      });
-      
       return true;
     } catch (error) {
       console.error("Error in rejectPalRequest:", error);
-      toast.error("Couldn't reject pal request. Please try again.", {
-        duration: 10000
-      });
       return false;
     }
   };
   
   // Check if a user is already a pal or has a pending request
-  const getPalStatus = async (userId: string): Promise<'none' | 'pending' | 'requested' | 'accepted'> => {
-    if (!user || userId === user.id) return 'none';
+  const getPalStatus = async (userId: string, currentUserId?: string): Promise<'none' | 'pending' | 'requested' | 'accepted'> => {
+    if (!currentUserId || userId === currentUserId) return 'none';
     
     try {
-      // Check if users are already friends
+      console.log(`Checking pal status between ${currentUserId} and ${userId}`);
+      
+      // Check if users are already friends (currentUser sent request)
       const { data: friendData, error: friendError } = await supabase
         .from('friends')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .eq('friend_id', userId)
         .maybeSingle();
       
@@ -332,6 +296,7 @@ export function usePalRequests() {
       }
       
       if (friendData) {
+        console.log("Users are friends (currentUser sent request)");
         return 'accepted';
       }
       
@@ -340,7 +305,7 @@ export function usePalRequests() {
         .from('friends')
         .select('*')
         .eq('user_id', userId)
-        .eq('friend_id', user.id)
+        .eq('friend_id', currentUserId)
         .maybeSingle();
         
       if (receivedError && receivedError.code !== 'PGRST116') {
@@ -349,26 +314,12 @@ export function usePalRequests() {
       }
       
       if (receivedRequest) {
+        console.log("Other user sent request to current user");
         return 'pending';
       }
       
-      // Check if current user sent a request to the other user
-      const { data: sentRequest, error: sentError } = await supabase
-        .from('friends')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('friend_id', userId)
-        .maybeSingle();
-        
-      if (sentError && sentError.code !== 'PGRST116') {
-        console.error("Error checking sent request:", sentError);
-        throw sentError;
-      }
-      
-      if (sentRequest) {
-        return 'requested';
-      }
-      
+      // Otherwise no relationship
+      console.log("No pal relationship found");
       return 'none';
     } catch (error) {
       console.error("Error in getPalStatus:", error);
@@ -381,7 +332,7 @@ export function usePalRequests() {
     if (user) {
       loadPalRequests();
       
-      // Set up real-time listener for friends table
+      // Set up real-time listener for friends table with improved error handling
       const friendsChannel = supabase
         .channel('friends-changes')
         .on('postgres_changes', 
@@ -391,7 +342,9 @@ export function usePalRequests() {
             loadPalRequests();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Friends channel subscription status:', status);
+        });
         
       return () => {
         supabase.removeChannel(friendsChannel);

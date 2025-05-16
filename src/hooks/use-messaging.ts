@@ -27,6 +27,8 @@ export const useMessaging = () => {
   useEffect(() => {
     if (!user) return;
 
+    console.log("Setting up real-time listeners for user:", user.id);
+
     // First ensure we're subscribed to messages via realtime
     const messagesChannel = supabase
       .channel('messages-channel')
@@ -99,6 +101,8 @@ export const useMessaging = () => {
         created_at: new Date().toISOString()
       };
       
+      console.log("Sending message with data:", messageData);
+      
       // Directly insert into the messages table first
       const { data, error } = await supabase
         .from('messages')
@@ -110,6 +114,8 @@ export const useMessaging = () => {
         console.error("Error inserting message:", error);
         throw error;
       }
+      
+      console.log("Message successfully inserted:", data);
       
       // Update the last message in the chat with better error handling
       const { error: chatError } = await supabase
@@ -143,7 +149,12 @@ export const useMessaging = () => {
 
   // Delete a message
   const deleteMessage = async (messageId: string) => {
+    if (isSending) return false; // Prevent operation if already sending
+    
     try {
+      setIsSending(true);
+      console.log("Attempting to delete message with ID:", messageId);
+      
       const { error } = await supabase
         .from('messages')
         .delete()
@@ -154,6 +165,8 @@ export const useMessaging = () => {
         throw error;
       }
       
+      console.log("Message successfully deleted");
+      
       // Update UI - trigger a refresh via chatSendMessage to reload messages
       if (chatSendMessage) {
         await chatSendMessage(""); // This will refresh the messages
@@ -163,12 +176,19 @@ export const useMessaging = () => {
     } catch (error) {
       console.error('Error deleting message:', error);
       return false;
+    } finally {
+      setIsSending(false);
     }
   };
 
   // Edit a message
   const editMessage = async (messageId: string, newContent: string) => {
+    if (isSending) return false; // Prevent operation if already sending
+    
     try {
+      setIsSending(true);
+      console.log("Attempting to edit message with ID:", messageId);
+      
       const { error } = await supabase
         .from('messages')
         .update({ content: newContent })
@@ -179,6 +199,8 @@ export const useMessaging = () => {
         throw error;
       }
       
+      console.log("Message successfully edited");
+      
       // Update UI - trigger a refresh via chatSendMessage to reload messages
       if (chatSendMessage) {
         await chatSendMessage(""); // This will refresh the messages
@@ -188,6 +210,8 @@ export const useMessaging = () => {
     } catch (error) {
       console.error('Error editing message:', error);
       return false;
+    } finally {
+      setIsSending(false);
     }
   };
 
