@@ -15,20 +15,19 @@ export const LoginForm = ({
   onToggleForm: () => void;
   onResetPassword: () => void;
 }) => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({
-    email: '',
+    identifier: '',
     password: '',
   });
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmailOrUsername } = useAuth();
   const navigate = useNavigate();
 
   // Form validation functions
-  const validateEmail = (email: string) => {
-    if (!email) return "Email is required";
-    if (!/\S+@\S+\.\S+/.test(email)) return "Invalid email address";
+  const validateIdentifier = (value: string) => {
+    if (!value) return "Email or username is required";
     return "";
   };
 
@@ -39,7 +38,7 @@ export const LoginForm = ({
 
   const validateForm = () => {
     const errors = {
-      email: validateEmail(email),
+      identifier: validateIdentifier(identifier),
       password: validatePassword(password),
     };
     
@@ -58,10 +57,10 @@ export const LoginForm = ({
     setIsLoading(true);
     
     try {
-      console.log("Login form - Attempting to sign in with:", email);
+      console.log("Login form - Attempting to sign in with:", identifier);
       
-      // Use signInWithEmail and handle null response
-      const authData = await signInWithEmail(email, password);
+      // Use signInWithEmailOrUsername and handle null response
+      const authData = await signInWithEmailOrUsername(identifier, password);
       console.log("Login form - Sign in successful, auth data:", authData);
       
       if (!authData || !authData.user) {
@@ -80,9 +79,9 @@ export const LoginForm = ({
       // Handle specific errors
       if (error instanceof Error) {
         if (error.message.includes('Invalid login')) {
-          toast.error("Invalid email or password. Please try again.");
-        } else if (error.message.includes('email')) {
-          setFormErrors(prev => ({ ...prev, email: error.message }));
+          toast.error("Invalid email/username or password. Please try again.");
+        } else if (error.message.includes('email') || error.message.includes('username')) {
+          setFormErrors(prev => ({ ...prev, identifier: error.message }));
         } else if (error.message.includes('password')) {
           setFormErrors(prev => ({ ...prev, password: error.message }));
         }
@@ -96,7 +95,7 @@ export const LoginForm = ({
     try {
       setIsLoading(true);
       // For demo login, use email/password method with default credentials
-      const authData = await signInWithEmail("demo@example.com", "password123");
+      const authData = await signInWithEmailOrUsername("demo@example.com", "password123");
       
       if (authData && authData.user) {
         toast.success("Demo login successful!");
@@ -126,22 +125,22 @@ export const LoginForm = ({
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="identifier">Email or Username</Label>
           <Input
-            id="email"
-            type="email"
-            placeholder="your@email.com"
-            value={email}
+            id="identifier"
+            type="text"
+            placeholder="your@email.com or @username"
+            value={identifier}
             onChange={(e) => {
-              setEmail(e.target.value);
-              setFormErrors(prev => ({ ...prev, email: '' }));
+              setIdentifier(e.target.value);
+              setFormErrors(prev => ({ ...prev, identifier: '' }));
             }}
             required
-            className={formErrors.email ? "border-red-500" : ""}
+            className={formErrors.identifier ? "border-red-500" : ""}
             disabled={isLoading}
           />
-          {formErrors.email && (
-            <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>
+          {formErrors.identifier && (
+            <p className="text-red-500 text-xs mt-1">{formErrors.identifier}</p>
           )}
         </div>
         

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser } from '@/types/auth';
@@ -10,7 +11,7 @@ interface AuthSession {
 }
 
 interface AuthContextType extends AuthSession {
-  signInWithEmail: (email: string, password: string) => Promise<any>;
+  signInWithEmailOrUsername: (emailOrUsername: string, password: string) => Promise<any>;
   signUpWithEmail: (email: string, password: string, username: string) => Promise<any>;
   signInWithGoogle: () => Promise<any>;
   signOut: () => Promise<void>;
@@ -141,10 +142,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Authentication methods
-  const signInWithEmail = async (email: string, password: string) => {
+  const signInWithEmailOrUsername = async (emailOrUsername: string, password: string) => {
     try {
-      console.log("Attempting to sign in with email:", email);
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("Attempting to sign in with:", emailOrUsername);
+      
+      // Check if input is an email or username
+      const isEmail = emailOrUsername.includes('@');
+      
+      let data, error;
+      
+      if (isEmail) {
+        // Sign in with email directly
+        ({ data, error } = await supabase.auth.signInWithPassword({ 
+          email: emailOrUsername, 
+          password 
+        }));
+      } else {
+        // If it's a username, first find the corresponding email
+        let username = emailOrUsername;
+        // Remove @ if it was included
+        if (username.startsWith('@')) {
+          username = username.substring(1);
+        }
+        
+        // Query profiles table to get the user with this username
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', username)
+          .maybeSingle();
+        
+        if (profileError) {
+          console.error("Error looking up username:", profileError.message);
+          throw new Error("Failed to verify username");
+        }
+        
+        if (!profileData) {
+          throw new Error("Username not found. Please check and try again.");
+        }
+        
+        // Now get the email from auth.users using the user ID
+        // This requires a direct query to the database in a real implementation
+        // For this example, we'll simulate by signing in directly with the ID
+        // which won't work in production but demonstrates the flow
+        
+        // In a real implementation, this would be handled via a Supabase Function
+        // that's authorized to query auth.users
+        throw new Error("Username login requires a server-side implementation to securely lookup user emails. Please use email login for now.");
+      }
       
       if (error) {
         console.error("Sign in error:", error.message);
@@ -283,7 +328,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      toast.success('Password reset email sent. Please check your inbox.');
+      toast.success('Password reset email sent. Check your inbox for a link to reset your password.');
       return true;
     } catch (error) {
       console.error("Password reset exception:", error);
@@ -405,7 +450,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     <AuthContext.Provider
       value={{
         ...session,
-        signInWithEmail,
+        signInWithEmailOrUsername,
         signUpWithEmail,
         signInWithGoogle,
         signOut,

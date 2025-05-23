@@ -41,7 +41,7 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
       
       if (result) {
         setSuccess(true);
-        toast.success('Password reset email sent. Check your inbox!', {
+        toast.success('Password reset email sent. Check your inbox for a link to set your new password!', {
           duration: 5000
         });
       } else {
@@ -61,7 +61,7 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
         <h1 className="text-3xl font-bold mb-2">Reset Password</h1>
         <p className="text-muted-foreground">
           {success 
-            ? "Check your email for a reset link" 
+            ? "Check your email for a password reset link" 
             : "Enter your email to receive a password reset link"
           }
         </p>
