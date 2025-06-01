@@ -39,10 +39,10 @@ const AuthCallback = () => {
           return;
         }
         
-        // Handle password recovery - redirect to reset password page
+        // Handle password recovery - redirect to change password page
         if (type === 'recovery') {
           console.log('Password recovery callback detected');
-          setMessage("Password reset link verified! Redirecting to password reset page...");
+          setMessage("Password reset link verified! Redirecting to change password page...");
           
           // Get the session which contains the recovery token
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -53,9 +53,9 @@ const AuthCallback = () => {
           }
           
           if (session && session.user) {
-            console.log('Valid recovery session found, redirecting to reset password page');
-            // Redirect to the reset password page - the session will contain the recovery token
-            navigate('/auth/reset-password');
+            console.log('Valid recovery session found, redirecting to change password page');
+            // Redirect to the change password page - the session will contain the recovery token
+            navigate('/change-password');
             return;
           } else {
             throw new Error('Invalid or expired reset link');

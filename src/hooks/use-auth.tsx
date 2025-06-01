@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthUser } from '@/types/auth';
@@ -181,14 +180,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           throw new Error("Username not found. Please check and try again.");
         }
         
-        // Now get the email from auth.users using the user ID
-        // This requires a direct query to the database in a real implementation
-        // For this example, we'll simulate by signing in directly with the ID
-        // which won't work in production but demonstrates the flow
-        
-        // In a real implementation, this would be handled via a Supabase Function
-        // that's authorized to query auth.users
-        throw new Error("Username login requires a server-side implementation to securely lookup user emails. Please use email login for now.");
+        // Get the user's email from auth.users via a function call
+        // For now, we'll show an error as this requires backend implementation
+        throw new Error("Username login requires additional setup. Please use your email address to sign in.");
       }
       
       if (error) {
@@ -321,7 +315,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.log('Attempting to send password reset email to:', email);
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+        redirectTo: `${window.location.origin}/change-password`,
       });
       
       if (error) {
@@ -335,6 +329,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       console.log('Password reset email sent successfully');
+      toast.success('Password reset link sent! Check your email.');
       return true;
     } catch (error) {
       console.error("Password reset exception:", error);

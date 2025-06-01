@@ -17,6 +17,7 @@ import PalsPage from "@/pages/pals-page";
 import { useAuth } from "@/hooks/use-auth";
 import Index from "@/pages/Index";
 import ResetPassword from "@/pages/reset-password";
+import ChangePassword from "@/pages/change-password";
 import AuthCallback from "@/pages/auth-callback";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationsPage from "@/pages/notifications-page";
@@ -65,6 +66,10 @@ const AppRoutes = () => {
           <Route 
             path="/auth/reset-password" 
             element={<ResetPassword />} 
+          />
+          <Route 
+            path="/change-password" 
+            element={<ChangePassword />} 
           />
           <Route 
             path="/auth/callback" 
