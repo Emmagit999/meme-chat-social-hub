@@ -37,19 +37,20 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
     setIsLoading(true);
     
     try {
+      console.log('Sending password reset email to:', email);
       const result = await resetPassword(email);
       
       if (result) {
         setSuccess(true);
-        toast.success('Password reset email sent. Check your inbox for a link to set your new password!', {
-          duration: 5000
+        toast.success('Password reset email sent! Check your inbox for a link to reset your password.', {
+          duration: 8000
         });
       } else {
-        toast.error('Failed to send reset email. Please try again.');
+        toast.error('Failed to send reset email. Please check if the email is registered.');
       }
     } catch (error) {
       console.error('Reset password error:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to send reset email');
+      toast.error(error instanceof Error ? error.message : 'Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +62,7 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
         <h1 className="text-3xl font-bold mb-2">Reset Password</h1>
         <p className="text-muted-foreground">
           {success 
-            ? "Check your email for a password reset link" 
+            ? "Check your email for a password reset link. Click the link to set a new password." 
             : "Enter your email to receive a password reset link"
           }
         </p>
@@ -70,7 +71,7 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
       {!success ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email Address</Label>
             <Input
               id="email"
               type="email"
@@ -96,20 +97,30 @@ export const ResetPasswordForm = ({ onToggleLogin }: { onToggleLogin: () => void
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
+                Sending Reset Email...
               </>
             ) : (
-              "Send Reset Link"
+              "Send Password Reset Email"
             )}
           </Button>
         </form>
       ) : (
-        <Button 
-          onClick={onToggleLogin} 
-          className="w-full bg-memeGreen hover:bg-memeGreen/90"
-        >
-          Return to Login
-        </Button>
+        <div className="space-y-4">
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 text-sm">
+              📧 Password reset email sent successfully! 
+              <br />
+              Please check your email and click the reset link to create a new password.
+            </p>
+          </div>
+          <Button 
+            onClick={onToggleLogin} 
+            variant="outline"
+            className="w-full"
+          >
+            Back to Login
+          </Button>
+        </div>
       )}
       
       <p className="text-center text-sm text-muted-foreground">

@@ -318,17 +318,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const resetPassword = async (email: string): Promise<boolean> => {
     try {
+      console.log('Attempting to send password reset email to:', email);
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       });
       
       if (error) {
         console.error("Password reset error:", error.message);
-        toast.error(error.message || 'Failed to send password reset email');
-        throw error;
+        if (error.message.includes('User not found')) {
+          toast.error('No account found with this email address');
+        } else {
+          toast.error(error.message || 'Failed to send password reset email');
+        }
+        return false;
       }
       
-      toast.success('Password reset email sent. Check your inbox for a link to reset your password.');
+      console.log('Password reset email sent successfully');
       return true;
     } catch (error) {
       console.error("Password reset exception:", error);

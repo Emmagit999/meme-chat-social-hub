@@ -1,99 +1,118 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { TriangleIcon, Loader2 } from 'lucide-react';
+import { TriangleIcon, Loader2, CheckCircle } from 'lucide-react';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const token = searchParams.get('token');
+  const [isInitializing, setIsInitializing] = useState(true);
   const [isValid, setIsValid] = useState(false);
   const [validationMessage, setValidationMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (!token) {
-      toast.error("Missing reset token. Please request a new password reset link.");
-      navigate('/auth');
-      return;
-    }
-
-    // Validate the token with Supabase
-    const validateToken = async () => {
+    // Check if user has a valid recovery session
+    const validateRecoverySession = async () => {
       try {
-        setIsLoading(true);
-        // Just get the user session which will validate the token
-        const { data, error } = await supabase.auth.getUser();
-
+        setIsInitializing(true);
+        console.log('Checking for recovery session...');
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
         if (error) {
-          console.error("Token validation error:", error);
+          console.error("Session validation error:", error);
           setIsValid(false);
-          setValidationMessage("Invalid or expired token. Please request a new password reset.");
-          toast.error("Password reset link is invalid or has expired");
-          setTimeout(() => navigate('/auth'), 3000);
-        } else if (data.user) {
+          setValidationMessage("Invalid or expired reset link. Please request a new password reset.");
+          return;
+        }
+        
+        if (session && session.user) {
+          console.log('Valid recovery session found for user:', session.user.email);
           setIsValid(true);
-          setValidationMessage("Token valid. You can now set your new password.");
+          setValidationMessage("Reset link verified. You can now set your new password.");
+        } else {
+          console.log('No valid recovery session found');
+          setIsValid(false);
+          setValidationMessage("Invalid or expired reset link. Please request a new password reset.");
         }
       } catch (err) {
-        console.error("Error validating token:", err);
+        console.error("Error validating recovery session:", err);
         setIsValid(false);
-        setValidationMessage("An error occurred validating your request.");
-        toast.error("An error occurred. Please try again.");
+        setValidationMessage("An error occurred. Please try requesting a new password reset.");
       } finally {
-        setIsLoading(false);
+        setIsInitializing(false);
       }
     };
 
-    validateToken();
-  }, [token, navigate]);
+    validateRecoverySession();
+  }, []);
 
-  const validatePasswordStrength = (pass: string) => {
+  const validatePassword = (pass: string) => {
     if (pass.length < 6) return "Password must be at least 6 characters";
+    if (!/(?=.*[a-z])/.test(pass)) return "Password must contain at least one lowercase letter";
+    if (!/(?=.*[A-Z])/.test(pass)) return "Password must contain at least one uppercase letter";
     return "";
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset errors
+    setPasswordError('');
+    setConfirmPasswordError('');
+    
     // Validation
-    const passwordStrengthError = validatePasswordStrength(password);
-    if (passwordStrengthError) {
-      toast.error(passwordStrengthError);
+    const passwordValidationError = validatePassword(password);
+    if (passwordValidationError) {
+      setPasswordError(passwordValidationError);
       return;
     }
     
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
+      setConfirmPasswordError("Passwords do not match");
       return;
     }
     
     setIsLoading(true);
     
     try {
+      console.log('Attempting to update password...');
+      
       const { error } = await supabase.auth.updateUser({ 
         password: password 
       });
       
       if (error) {
+        console.error('Password update error:', error);
         throw error;
       }
       
-      toast.success("Password updated successfully");
-      // Sign out after password change to require new login
+      console.log('Password updated successfully');
+      toast.success("Password updated successfully! You can now log in with your new password.");
+      
+      // Sign out to ensure user needs to log in with new password
       await supabase.auth.signOut();
-      setTimeout(() => navigate('/auth'), 2000);
+      
+      // Redirect to login after a short delay
+      setTimeout(() => {
+        navigate('/auth');
+      }, 2000);
+      
     } catch (error) {
       console.error('Error updating password:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to update password');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update password';
+      toast.error(errorMessage);
+      setPasswordError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -111,15 +130,18 @@ const ResetPassword = () => {
         <Card>
           <CardContent className="pt-6">
             <div className="space-y-6">
-              {isLoading && !isValid ? (
+              {isInitializing ? (
                 <div className="flex flex-col items-center justify-center py-8">
                   <Loader2 className="h-8 w-8 animate-spin text-memeGreen mb-4" />
                   <p className="text-center text-muted-foreground">
-                    Validating your reset link...
+                    Verifying your reset link...
                   </p>
                 </div>
-              ) : !isValid && validationMessage ? (
+              ) : !isValid ? (
                 <div className="text-center py-6">
+                  <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <span className="text-red-600 text-xl">⚠️</span>
+                  </div>
                   <h2 className="text-2xl font-bold mb-2">Invalid Reset Link</h2>
                   <p className="text-muted-foreground mb-4">
                     {validationMessage}
@@ -128,15 +150,18 @@ const ResetPassword = () => {
                     onClick={() => navigate('/auth')}
                     className="bg-memeGreen hover:bg-memeGreen/90"
                   >
-                    Back to Login
+                    Request New Reset Link
                   </Button>
                 </div>
               ) : (
                 <>
                   <div className="text-center">
-                    <h1 className="text-3xl font-bold mb-2">Set New Password</h1>
+                    <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle className="h-6 w-6 text-green-600" />
+                    </div>
+                    <h1 className="text-2xl font-bold mb-2">Set New Password</h1>
                     <p className="text-muted-foreground">
-                      Enter your new password below
+                      Choose a strong password for your account
                     </p>
                   </div>
                   
@@ -146,27 +171,41 @@ const ResetPassword = () => {
                       <Input
                         id="password"
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="Enter new password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          setPasswordError('');
+                        }}
                         required
                         minLength={6}
+                        className={passwordError ? "border-red-500" : ""}
                       />
+                      {passwordError && (
+                        <p className="text-red-500 text-xs mt-1">{passwordError}</p>
+                      )}
                       <p className="text-xs text-muted-foreground">
-                        Password must be at least 6 characters
+                        Password must be at least 6 characters with uppercase and lowercase letters
                       </p>
                     </div>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm Password</Label>
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
                       <Input
                         id="confirmPassword"
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="Confirm new password"
                         value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setConfirmPasswordError('');
+                        }}
                         required
+                        className={confirmPasswordError ? "border-red-500" : ""}
                       />
+                      {confirmPasswordError && (
+                        <p className="text-red-500 text-xs mt-1">{confirmPasswordError}</p>
+                      )}
                     </div>
                     
                     <Button 
@@ -177,7 +216,7 @@ const ResetPassword = () => {
                       {isLoading ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Updating...
+                          Updating Password...
                         </>
                       ) : (
                         "Update Password"
