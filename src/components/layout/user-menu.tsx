@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { LogOut, Settings, User, Crown, Info } from "lucide-react";
 
 export const UserMenu = () => {
   const { user, signOut } = useAuth();
@@ -38,14 +39,21 @@ export const UserMenu = () => {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => navigate(`/profile/${user.id}`)}>
-          Profile
+          <User className="mr-2 h-4 w-4" />
+          <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings')}>
-          Settings
+        <DropdownMenuItem onClick={() => navigate('/about')}>
+          <Info className="mr-2 h-4 w-4" />
+          <span>About</span>
+        </DropdownMenuItem>
+        <DropdownMenuItem>
+          <Settings className="mr-2 h-4 w-4" />
+          <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={signOut}>
-          Log out
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

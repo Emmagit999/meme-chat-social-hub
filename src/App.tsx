@@ -22,6 +22,7 @@ import AuthCallback from "@/pages/auth-callback";
 import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationsPage from "@/pages/notifications-page";
 import PostDetailPage from "@/pages/post-detail-page";
+import AboutPage from "@/pages/about-page";
 import { usePalRequests } from "@/hooks/use-pal-requests";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
@@ -98,6 +99,10 @@ const AppRoutes = () => {
           <Route 
             path="/chat" 
             element={<AuthCheck><ChatPage /></AuthCheck>} 
+          />
+          <Route 
+            path="/about" 
+            element={<AboutPage />} 
           />
           <Route 
             path="/search" 

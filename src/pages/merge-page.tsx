@@ -414,19 +414,19 @@ const MergePage: React.FC = () => {
                     {searchQuery ? `No users found matching "${searchQuery}"` : "No users online right now"}
                   </p>
                 ) : (
-                  searchFilteredUsers.map(user => (
-                    <div key={user.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-800 transition-colors">
+                  searchFilteredUsers.map(onlineUser => (
+                    <div key={onlineUser.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-800 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className="relative">
                           <Avatar>
-                            <AvatarImage src={user.avatar} alt={user.username} />
-                            <AvatarFallback className="bg-gray-800 text-yellow-500">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                            <AvatarImage src={onlineUser.avatar} alt={onlineUser.username} />
+                            <AvatarFallback className="bg-gray-800 text-yellow-500">{onlineUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-gray-900" />
                         </div>
                         <div>
-                          <h3 className="font-medium text-yellow-500">{user.displayName || user.username}</h3>
-                          <p className="text-sm text-gray-400">@{user.username}</p>
+                          <h3 className="font-medium text-yellow-500">{onlineUser.displayName || onlineUser.username}</h3>
+                          <p className="text-sm text-gray-400">@{onlineUser.username}</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -438,14 +438,14 @@ const MergePage: React.FC = () => {
                               const { error } = await supabase
                                 .from('friends')
                                 .insert([
-                                  { user_id: user?.id, friend_id: user.id }
+                                  { user_id: user?.id, friend_id: onlineUser.id }
                                 ]);
                               
                               if (error) {
                                 console.error('Error adding friend:', error);
                                 toast.error('Failed to add as friend');
                               } else {
-                                toast.success(`Added ${user.displayName || user.username} as friend!`);
+                                toast.success(`Added ${onlineUser.displayName || onlineUser.username} as friend!`);
                               }
                             } catch (error) {
                               console.error('Error adding friend:', error);
@@ -459,7 +459,7 @@ const MergePage: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleStartChat(user)}
+                          onClick={() => handleStartChat(onlineUser)}
                           className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-700"
                         >
                           <MessageCircle className="h-5 w-5" />
