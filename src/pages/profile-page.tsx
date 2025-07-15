@@ -107,80 +107,81 @@ const ProfilePage: React.FC = () => {
         setBio(savedBio);
       }
     }
-    
+  }, [isOwnProfile]);
+
+  // Load friends separately to avoid infinite loop
+  useEffect(() => {
     const loadProfileFriends = async () => {
+      if (!profileUser) return;
+      
       setIsLoadingFriends(true);
       try {
         const targetUserId = profileId || user?.id;
         if (!targetUserId) return;
         
-        // Try to get pals from friends table in Supabase
-        console.log(`Fetching friends data for profile: ${targetUserId}`);
-        const { data: friendsData, error: friendsError } = await supabase
+        // Get friends from both directions (user_id and friend_id)
+        const { data: outgoingFriends, error: outgoingError } = await supabase
           .from('friends')
           .select('friend_id')
           .eq('user_id', targetUserId);
           
-        if (friendsError) {
-          console.error("Error fetching friends for profile:", friendsError);
-          throw friendsError;
-        }
-        
-        console.log("Profile friends data received:", friendsData);
-        
-        // If we have pals in the database
-        if (friendsData && friendsData.length > 0) {
-          const palIds = friendsData.map(f => f.friend_id);
+        const { data: incomingFriends, error: incomingError } = await supabase
+          .from('friends')
+          .select('user_id')
+          .eq('friend_id', targetUserId);
           
-          // Get the profile data for each pal
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('*')
-            .in('id', palIds);
-            
-          if (profilesError) {
-            console.error("Error fetching profiles for friends:", profilesError);
-            throw profilesError;
-          }
-          
-          if (profilesData) {
-            const formattedFriends = profilesData.map(profile => ({
-              id: profile.id,
-              username: profile.username || 'pal',
-              displayName: profile.username || 'Pal',
-              avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
-              bio: profile.bio || '',
-              isPro: profile.is_pro || false,
-              createdAt: new Date(profile.updated_at || new Date())
-            }));
-            
-            console.log("Formatted profile friends:", formattedFriends);
-            setFriends(formattedFriends);
-            return;
-          }
-        } else {
-          console.log("No profile friends found in database, trying getFriends method");
-        }
-        
-        // Fallback to getFriends method for own profile
-        if (isOwnProfile) {
-          const friendsList = await getFriends();
-          setFriends(friendsList);
-        } else {
+        if (outgoingError || incomingError) {
+          console.error("Error fetching friends:", outgoingError || incomingError);
           setFriends([]);
+          return;
+        }
+        
+        // Combine both directions
+        const friendIds = [
+          ...(outgoingFriends?.map(f => f.friend_id) || []),
+          ...(incomingFriends?.map(f => f.user_id) || [])
+        ];
+        
+        if (friendIds.length === 0) {
+          setFriends([]);
+          return;
+        }
+        
+        // Get profiles for friends
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', friendIds);
+          
+        if (profilesError) {
+          console.error("Error fetching friend profiles:", profilesError);
+          setFriends([]);
+          return;
+        }
+        
+        if (profilesData) {
+          const formattedFriends = profilesData.map(profile => ({
+            id: profile.id,
+            username: profile.username || 'friend',
+            displayName: profile.username || 'Friend',
+            avatar: profile.avatar_url || `/assets/avatar${Math.floor(Math.random() * 3) + 1}.jpg`,
+            bio: profile.bio || '',
+            isPro: profile.is_pro || false,
+            createdAt: new Date(profile.updated_at || new Date())
+          }));
+          
+          setFriends(formattedFriends);
         }
       } catch (error) {
-        console.error('Error loading profile friends:', error);
+        console.error('Error loading friends:', error);
         setFriends([]);
       } finally {
         setIsLoadingFriends(false);
       }
     };
     
-    if (profileUser) {
-      loadProfileFriends();
-    }
-  }, [getFriends, isOwnProfile, profileId, profileUser, user?.id]);
+    loadProfileFriends();
+  }, [profileUser?.id, profileId, user?.id]);
 
   // Check pal status when viewing another user's profile
   useEffect(() => {

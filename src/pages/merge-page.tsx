@@ -131,23 +131,35 @@ const MergePage: React.FC = () => {
   
   const handleLike = async () => {
     if (!user || !currentUser) {
-      toast.error("You must be logged in to like users");
+      toast.error("You must be logged in to add friends");
       return;
     }
     
     setSwiped(true);
     setDirection('right');
     
-    // Add to pals
-    const pals = JSON.parse(localStorage.getItem('pals') || '[]');
-    if (!pals.some(p => p.id === currentUser.id)) {
-      pals.push(currentUser);
-      localStorage.setItem('pals', JSON.stringify(pals));
+    try {
+      // Add to friends in Supabase database
+      const { error } = await supabase
+        .from('friends')
+        .insert([
+          { user_id: user.id, friend_id: currentUser.id }
+        ]);
+      
+      if (error) {
+        console.error('Error adding friend:', error);
+        toast.error('Failed to add as friend');
+      } else {
+        toast.success(`${currentUser.displayName || currentUser.username} added as friend!`);
+        
+        // Open message box to this user
+        setSelectedUser(currentUser);
+        setShowingMessageBox(true);
+      }
+    } catch (error) {
+      console.error('Error in handleLike:', error);
+      toast.error('Failed to add as friend');
     }
-    
-    // Open message box to this user
-    setSelectedUser(currentUser);
-    setShowingMessageBox(true);
     
     goToNextUser();
   };
@@ -421,15 +433,23 @@ const MergePage: React.FC = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => {
-                            // Add to pals
-                            const pals = JSON.parse(localStorage.getItem('pals') || '[]');
-                            if (!pals.some(p => p.id === user.id)) {
-                              pals.push(user);
-                              localStorage.setItem('pals', JSON.stringify(pals));
-                              toast.success(`Added ${user.displayName || user.username} as a pal!`);
-                            } else {
-                              toast.info(`${user.displayName || user.username} is already your pal!`);
+                          onClick={async () => {
+                            try {
+                              const { error } = await supabase
+                                .from('friends')
+                                .insert([
+                                  { user_id: user?.id, friend_id: user.id }
+                                ]);
+                              
+                              if (error) {
+                                console.error('Error adding friend:', error);
+                                toast.error('Failed to add as friend');
+                              } else {
+                                toast.success(`Added ${user.displayName || user.username} as friend!`);
+                              }
+                            } catch (error) {
+                              console.error('Error adding friend:', error);
+                              toast.error('Failed to add as friend');
                             }
                           }}
                           className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-700"

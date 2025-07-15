@@ -75,8 +75,8 @@ export const RegisterForm = ({ onToggleForm }: { onToggleForm: () => void }) => 
       const result = await register(username, email, password);
       
       // If we get here, registration was successful
-      setSuccess('Registration successful! Please check your email to verify your account before logging in.');
-      toast.success('Check your email for verification link');
+      setSuccess('Registration successful! Please check your email to confirm your account. This step is required before you can log in and start using the app.');
+      toast.success('Check your email for confirmation link - you must confirm to continue!');
       
       // Clear the form
       setUsername('');

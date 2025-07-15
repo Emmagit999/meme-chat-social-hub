@@ -127,15 +127,15 @@ export const useComments = () => {
 
         setComments(prev => [newComment, ...prev]);
         
-        // Fix: manually update the post's comment count instead of using RPC
-        const currentPost = await supabase
+        // Update the post's comment count properly
+        const { data: currentPost, error: fetchError } = await supabase
           .from('posts')
           .select('comments')
           .eq('id', comment.postId)
           .single();
           
-        if (!currentPost.error) {
-          const newCount = (currentPost.data?.comments || 0) + 1;
+        if (!fetchError && currentPost) {
+          const newCount = (currentPost.comments || 0) + 1;
           
           const { error: updateError } = await supabase
             .from('posts')
@@ -144,10 +144,10 @@ export const useComments = () => {
             
           if (updateError) {
             console.error('Error updating post comment count:', updateError);
-          } else {
-            toast.success("Comment added!");
           }
         }
+        
+        toast.success("Comment added!");
       }
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -240,6 +240,25 @@ export const useComments = () => {
               : comment
           )
         );
+        
+        // Update post comment count for replies too
+        const parentComment = comments.find(c => c.id === commentId);
+        if (parentComment) {
+          const { data: currentPost, error: fetchError } = await supabase
+            .from('posts')
+            .select('comments')
+            .eq('id', parentComment.postId)
+            .single();
+            
+          if (!fetchError && currentPost) {
+            const newCount = (currentPost.comments || 0) + 1;
+            
+            await supabase
+              .from('posts')
+              .update({ comments: newCount })
+              .eq('id', parentComment.postId);
+          }
+        }
         
         toast.success("Reply added!");
       }

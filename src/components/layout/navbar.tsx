@@ -32,7 +32,7 @@ export const Navbar = () => {
     },
     {
       path: '/pals',
-      label: 'Pals',
+      label: 'Friends',
       icon: <Users className="h-5 w-5" />,
       activeIcon: <Users className="h-5 w-5 text-yellow-500" />,
     },

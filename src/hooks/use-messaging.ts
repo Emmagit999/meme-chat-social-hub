@@ -71,28 +71,23 @@ export const useMessaging = () => {
 
   // Enhanced message sending with better error handling and prevention of double sending
   const sendMessage = async (content: string) => {
-    if (!content.trim() || !activeChat || isSending) return null; // Prevent sending if already sending
+    if (!content.trim() || !activeChat || isSending) return null;
     
     try {
       setIsSending(true);
       setLastError(null);
       
-      // Get the other user's ID from the active chat
       const chat = chats.find(c => c.id === activeChat);
       if (!chat || !user) {
         throw new Error("Chat or user not found");
       }
       
-      // Find the other participant's ID
       const receiverId = chat.participants.find(id => id !== user.id);
       if (!receiverId) {
         throw new Error("Receiver not found");
       }
       
-      // Generate a proper UUID for the message
       const messageId = uuidv4();
-      
-      // Prepare the message object
       const messageData = {
         id: messageId,
         content,
@@ -101,40 +96,23 @@ export const useMessaging = () => {
         created_at: new Date().toISOString()
       };
       
-      console.log("Sending message with data:", messageData);
-      
-      // Directly insert into the messages table first
+      // Use a transaction-like approach to prevent duplicate sends
       const { data, error } = await supabase
         .from('messages')
         .insert(messageData)
         .select()
         .single();
         
-      if (error) {
-        console.error("Error inserting message:", error);
-        throw error;
-      }
+      if (error) throw error;
       
-      console.log("Message successfully inserted:", data);
-      
-      // Update the last message in the chat with better error handling
-      const { error: chatError } = await supabase
+      // Update chat last message
+      await supabase
         .from('chats')
         .update({
           last_message: content,
           last_message_date: new Date().toISOString()
         })
         .eq('id', activeChat);
-        
-      if (chatError) {
-        console.error("Error updating chat:", chatError);
-        // Don't throw here, we want to continue even if chat update fails
-      }
-      
-      // Now call the chat function to update the UI
-      if (chatSendMessage) {
-        await chatSendMessage(content);
-      }
       
       return data;
     } catch (error) {
@@ -142,7 +120,6 @@ export const useMessaging = () => {
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
       throw error;
     } finally {
-      // Make sure isSending is always reset
       setIsSending(false);
     }
   };
