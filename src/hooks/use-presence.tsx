@@ -22,7 +22,16 @@ export const usePresence = () => {
     roomOne
       .on('presence', { event: 'sync' }, () => {
         const newState = roomOne.presenceState();
-        const users = Object.values(newState).flat() as UserPresence[];
+        const users: UserPresence[] = [];
+        
+        Object.values(newState).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            if (presence.user_id && presence.username) {
+              users.push(presence as UserPresence);
+            }
+          });
+        });
+        
         setOnlineUsers(users);
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {

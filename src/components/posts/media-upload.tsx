@@ -1,96 +1,126 @@
+import React, { useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { ImageIcon, Video, Upload, Camera } from 'lucide-react';
+import { toast } from 'sonner';
+import { CameraCapture } from '@/components/media/camera-capture';
 
-import React, { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { uploadToStorage } from "@/utils/storage";
-import { useAuth } from "@/context/auth-context";
-import { toast } from "sonner";
-import { ImageIcon, VideoIcon } from "lucide-react";
+interface MediaUploadProps {
+  onImageSelect: (file: File) => void;
+  onVideoSelect: (file: File) => void;
+}
 
-export const MediaUpload: React.FC<{
-  onUploaded: (url: string, type: "image" | "video") => void;
-}> = ({ onUploaded }) => {
-  const { user } = useAuth();
+export const MediaUpload: React.FC<MediaUploadProps> = ({ onImageSelect, onVideoSelect }) => {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const [loading, setLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'photo' | 'video'>('photo');
 
-  const handleImageSelect = () => {
-    imageInputRef.current?.click();
-  };
-
-  const handleVideoSelect = () => {
-    videoInputRef.current?.click();
-  };
-
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !e.target.files?.[0]) return;
-    setLoading(true);
-    const url = await uploadToStorage(e.target.files[0], "post_media", user.id);
-    if (url) {
-      onUploaded(url, "image");
-      toast.success("Image uploaded!");
-    } else {
-      toast.error("Image upload failed!");
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        toast.error('Image file is too large. Please select an image under 10MB.');
+        return;
+      }
+      onImageSelect(file);
     }
-    setLoading(false);
-    e.target.value = "";
   };
 
-  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!user || !e.target.files?.[0]) return;
-    setLoading(true);
-    const url = await uploadToStorage(e.target.files[0], "post_media", user.id);
-    if (url) {
-      onUploaded(url, "video");
-      toast.success("Video uploaded!");
-    } else {
-      toast.error("Video upload failed!");
+  const handleVideoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 50 * 1024 * 1024) { // 50MB limit
+        toast.error('Video file is too large. Please select a video under 50MB.');
+        return;
+      }
+      onVideoSelect(file);
     }
-    setLoading(false);
-    e.target.value = "";
+  };
+
+  const handleCameraCapture = (file: File) => {
+    if (file.type.startsWith('image/')) {
+      onImageSelect(file);
+    } else if (file.type.startsWith('video/')) {
+      onVideoSelect(file);
+    }
+    setShowCamera(false);
+  };
+
+  const openCamera = (mode: 'photo' | 'video') => {
+    setCameraMode(mode);
+    setShowCamera(true);
   };
 
   return (
-    <div className="flex gap-4">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={handleImageSelect}
-        disabled={loading}
-        className="flex items-center gap-2 text-yellow-600 border-yellow-400"
-      >
-        <ImageIcon className="h-4 w-4" />
-        Upload Image
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={handleVideoSelect}
-        disabled={loading}
-        className="flex items-center gap-2 text-yellow-600 border-yellow-400"
-      >
-        <VideoIcon className="h-4 w-4" />
-        Upload Video
-      </Button>
-      <input
-        ref={imageInputRef}
-        className="hidden"
-        type="file"
-        accept="image/*"
-        onChange={handleImageChange}
-        disabled={loading}
+    <>
+      <div className="flex gap-2 flex-wrap">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => imageInputRef.current?.click()}
+          className="flex items-center gap-2"
+        >
+          <ImageIcon className="h-4 w-4" />
+          Photo
+        </Button>
+        
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => videoInputRef.current?.click()}
+          className="flex items-center gap-2"
+        >
+          <Video className="h-4 w-4" />
+          Video
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => openCamera('photo')}
+          className="flex items-center gap-2"
+        >
+          <Camera className="h-4 w-4" />
+          Take Photo
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => openCamera('video')}
+          className="flex items-center gap-2"
+        >
+          <Video className="h-4 w-4" />
+          Record
+        </Button>
+
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          onChange={handleVideoSelect}
+          className="hidden"
+        />
+      </div>
+
+      <CameraCapture
+        isOpen={showCamera}
+        onClose={() => setShowCamera(false)}
+        onCapture={handleCameraCapture}
+        mode={cameraMode}
       />
-      <input
-        ref={videoInputRef}
-        className="hidden"
-        type="file"
-        accept="video/*"
-        onChange={handleVideoChange}
-        disabled={loading}
-      />
-      {loading && <span className="text-sm text-muted-foreground">Uploading...</span>}
-    </div>
+    </>
   );
 };

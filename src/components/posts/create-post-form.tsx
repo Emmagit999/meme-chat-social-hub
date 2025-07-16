@@ -21,6 +21,7 @@ import { useData } from "@/context/data-context";
 import { ImageIcon, FilmIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { MediaUpload } from "./media-upload";
+import { uploadToStorage } from "@/utils/storage";
 
 interface CreatePostFormProps {
   isOpen: boolean;
@@ -37,9 +38,34 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  const handleMediaUploaded = (url: string, type: "image" | "video") => {
-    setMediaPreview(url);
-    setMediaType(type);
+  const handleImageSelect = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await uploadToStorage(file, "post_media", user?.id || '');
+      if (url) {
+        setMediaPreview(url);
+        setMediaType('image');
+        toast.success("Image uploaded!");
+      }
+    } catch (error) {
+      toast.error("Failed to upload image");
+    }
+    setUploading(false);
+  };
+
+  const handleVideoSelect = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await uploadToStorage(file, "post_media", user?.id || '');
+      if (url) {
+        setMediaPreview(url);
+        setMediaType('video');
+        toast.success("Video uploaded!");
+      }
+    } catch (error) {
+      toast.error("Failed to upload video");
+    }
+    setUploading(false);
   };
 
   const handlePostSubmit = () => {
@@ -93,7 +119,10 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
             onChange={(e) => setContent(e.target.value)}
             className="min-h-[120px] border-yellow-400"
           />
-          <MediaUpload onUploaded={handleMediaUploaded} />
+          <MediaUpload 
+            onImageSelect={handleImageSelect} 
+            onVideoSelect={handleVideoSelect} 
+          />
           
           <Select 
             value={postType} 

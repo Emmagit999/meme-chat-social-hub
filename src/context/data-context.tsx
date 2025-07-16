@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Post, Comment, CommentReply } from '@/types';
 import { usePosts } from '@/hooks/use-posts';
 import { useComments } from '@/hooks/use-comments';
+import { useRealTimeSync } from '@/hooks/use-real-time-sync';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -50,6 +51,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getPostComments,
     refreshComments
   } = useComments();
+
+  // Enable real-time sync
+  useRealTimeSync();
 
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
