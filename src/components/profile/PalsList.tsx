@@ -3,10 +3,13 @@ import React from 'react';
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Users } from "lucide-react";
+import { MessageCircle, Users, UserCheck, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { User } from "@/types";
 import { useChat } from "@/hooks/use-chat";
+import { usePalRequests } from "@/hooks/use-pal-requests";
+import { usePresence } from "@/hooks/use-presence";
+import { toast } from "sonner";
 
 interface PalsListProps {
   pals: User[];
@@ -16,6 +19,8 @@ interface PalsListProps {
 export const PalsList: React.FC<PalsListProps> = ({ pals, isLoading }) => {
   const navigate = useNavigate();
   const { startNewChat } = useChat();
+  const { receivedRequests, acceptPalRequest, rejectPalRequest } = usePalRequests();
+  const { isUserOnline } = usePresence();
 
   const handleMessagePal = async (palId: string) => {
     try {
@@ -27,6 +32,27 @@ export const PalsList: React.FC<PalsListProps> = ({ pals, isLoading }) => {
       console.error('Failed to start chat:', error);
     }
   };
+
+  const handleAcceptAllRequests = async () => {
+    const pendingRequests = receivedRequests.filter(r => r.status === 'pending');
+    
+    if (pendingRequests.length === 0) {
+      toast.info('No pending pal requests');
+      return;
+    }
+
+    try {
+      for (const request of pendingRequests) {
+        await acceptPalRequest(request.id);
+      }
+      toast.success(`Accepted ${pendingRequests.length} pal requests!`);
+    } catch (error) {
+      console.error('Failed to accept all requests:', error);
+      toast.error('Failed to accept some requests');
+    }
+  };
+
+  const pendingRequestsCount = receivedRequests.filter(r => r.status === 'pending').length;
 
   if (isLoading) {
     return (
@@ -59,6 +85,16 @@ export const PalsList: React.FC<PalsListProps> = ({ pals, isLoading }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">Your Pals ({pals.length})</h2>
+        {pendingRequestsCount > 0 && (
+          <Button
+            onClick={handleAcceptAllRequests}
+            className="bg-memeGreen hover:bg-memeGreen/90"
+            size="sm"
+          >
+            <UserCheck className="h-4 w-4 mr-2" />
+            Accept All ({pendingRequestsCount})
+          </Button>
+        )}
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -66,12 +102,17 @@ export const PalsList: React.FC<PalsListProps> = ({ pals, isLoading }) => {
           <Card key={pal.id} className="border-yellow-400/20 hover:border-yellow-400/40 transition-colors">
             <div className="p-4">
               <div className="flex items-center gap-4 mb-4">
-                <Avatar className="h-16 w-16 border-2 border-yellow-400">
-                  <AvatarImage src={pal.avatar} alt={pal.username} />
-                  <AvatarFallback className="text-lg bg-yellow-100 text-yellow-800">
-                    {pal.username.substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-16 w-16 border-2 border-yellow-400">
+                    <AvatarImage src={pal.avatar} alt={pal.username} />
+                    <AvatarFallback className="text-lg bg-yellow-100 text-yellow-800">
+                      {pal.username.substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {isUserOnline(pal.id) && (
+                    <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-green-500 border-2 border-white rounded-full"></div>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-lg truncate">
                     {pal.displayName || pal.username}
