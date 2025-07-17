@@ -9,6 +9,8 @@ import { MessageCircle, Share2, Trash } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useVideoManager } from "@/hooks/use-video-manager";
+import { ShareDialog } from "@/components/posts/share-dialog";
 
 interface PostCardProps {
   post: {
@@ -42,11 +44,13 @@ export const PostCard: React.FC<PostCardProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { playVideo, pauseVideo, isVideoPlaying } = useVideoManager();
   const [isLiked, setIsLiked] = useState(() => isPostLiked(post.id));
   const [isAnimating, setIsAnimating] = useState(false);
   const [localLikeCount, setLocalLikeCount] = useState(post.likes);
   const [userClickedPlay, setUserClickedPlay] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // Update isLiked whenever likedPosts changes
   useEffect(() => {
@@ -92,20 +96,22 @@ export const PostCard: React.FC<PostCardProps> = ({
   };
 
   const handleVideoClick = () => {
-    if (!isMobile) {
-      if (videoRef.current) {
-        if (videoRef.current.paused) {
-          videoRef.current.play().catch(e => console.log("Video play error:", e));
-          setUserClickedPlay(true);
-        } else {
-          videoRef.current.pause();
-          setUserClickedPlay(false);
-        }
+    if (videoRef.current) {
+      if (videoRef.current.paused || !isVideoPlaying(post.id)) {
+        playVideo(post.id, videoRef.current);
+        setUserClickedPlay(true);
+      } else {
+        pauseVideo(post.id);
+        setUserClickedPlay(false);
       }
     }
   };
 
-  // Improved video handling - only plays when visible and clicked
+  const handleShareClick = () => {
+    setShareDialogOpen(true);
+  };
+
+  // Improved video handling with global video manager
   useEffect(() => {
     if (!videoRef.current || !post.video) return;
     
@@ -113,27 +119,21 @@ export const PostCard: React.FC<PostCardProps> = ({
       (entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
-            // Don't autoplay on desktop - wait for user click
-            if (isMobile) {
-              videoRef.current?.play().catch(e => {
-                // Handle autoplay restrictions by muting
-                if (videoRef.current) {
-                  videoRef.current.muted = true;
-                  videoRef.current.play().catch(err => 
-                    console.log("Video play error:", err)
-                  );
-                }
-              });
+            // Only autoplay on mobile after user interaction
+            if (isMobile && userClickedPlay) {
+              if (videoRef.current) {
+                playVideo(post.id, videoRef.current);
+              }
             }
           } else {
             // Pause when not in view
-            if (videoRef.current && !videoRef.current.paused) {
-              videoRef.current?.pause();
+            if (isVideoPlaying(post.id)) {
+              pauseVideo(post.id);
             }
           }
         });
       },
-      { threshold: 0.5 }
+      { threshold: 0.6 }
     );
     
     observer.observe(videoRef.current);
@@ -143,7 +143,7 @@ export const PostCard: React.FC<PostCardProps> = ({
         observer.unobserve(videoRef.current);
       }
     };
-  }, [post.video, isMobile, userClickedPlay]);
+  }, [post.video, isMobile, userClickedPlay, playVideo, pauseVideo, isVideoPlaying, post.id]);
 
   // Ensure proper media sizing and layout
   const getPostTypeBadgeStyles = () => {
@@ -289,12 +289,21 @@ export const PostCard: React.FC<PostCardProps> = ({
           )}
           <button 
             className="hover:text-yellow-500 transition-colors p-2 rounded-full hover:bg-gray-800"
+            onClick={handleShareClick}
             aria-label="Share post"
           >
             <Share2 size={18} />
           </button>
         </div>
       </div>
+
+      <ShareDialog
+        isOpen={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        postId={post.id}
+        username={post.username}
+        content={post.content}
+      />
     </div>
   );
 };

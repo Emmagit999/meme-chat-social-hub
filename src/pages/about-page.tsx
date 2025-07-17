@@ -91,7 +91,7 @@ const AboutPage: React.FC = () => {
             
             <div className="pt-4 space-y-2">
               <Button 
-                onClick={handleSupport}
+                onClick={() => window.location.href = '/opay-support'}
                 className="w-full bg-yellow-500 hover:bg-yellow-600 text-black"
               >
                 <Heart className="h-4 w-4 mr-2" />
@@ -133,7 +133,7 @@ const AboutPage: React.FC = () => {
                 to everyone, everywhere."
               </p>
               <p className="text-xs text-muted-foreground mt-2 italic">
-                - The MemChat Team
+                - Made with ❤️ by Gods Love Network
               </p>
             </div>
             
@@ -141,11 +141,11 @@ const AboutPage: React.FC = () => {
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => window.open('https://github.com', '_blank')}
+                onClick={() => toast.info("MemChat is proudly built by Gods Love Network")}
                 className="border-gray-500/30"
               >
                 <Github className="h-4 w-4 mr-2" />
-                Open Source
+                About Developer
               </Button>
               <Button 
                 variant="outline" 

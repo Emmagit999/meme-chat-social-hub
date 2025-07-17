@@ -352,8 +352,12 @@ const ChatPage: React.FC = () => {
               />
               
               <div 
-                className="flex-1 overflow-y-auto p-4 bg-gray-900" 
-                style={{ height: 'calc(100% - 120px)' }}
+                className="flex-1 overflow-y-auto p-4 bg-gray-900 overscroll-contain" 
+                style={{ 
+                  height: 'calc(100% - 120px)',
+                  scrollBehavior: 'smooth',
+                  WebkitOverflowScrolling: 'touch'
+                }}
                 ref={messagesContainerRef}
               >
                 {!isConnected && (

@@ -6,6 +6,7 @@ import { Message, User } from '@/types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Edit, Trash2, MoreVertical } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from 'sonner';
 
 interface ChatMessageProps {
   message: Message;
@@ -39,16 +40,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const handleDelete = async () => {
     if (!onDeleteMessage || isSubmitting) return;
     
+    const confirmed = window.confirm("Are you sure you want to delete this message?");
+    if (!confirmed) return;
+    
     try {
       setIsDeleting(true);
       setIsSubmitting(true);
       const success = await onDeleteMessage(message.id);
-      if (!success) {
+      if (success) {
+        toast.success("Message deleted");
+      } else {
         console.error("Failed to delete message");
+        toast.error("Failed to delete message");
         setIsDeleting(false);
       }
     } catch (error) {
       console.error("Error deleting message:", error);
+      toast.error("Failed to delete message");
       setIsDeleting(false);
     } finally {
       setIsSubmitting(false);
@@ -68,11 +76,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       const success = await onEditMessage(message.id, editContent);
       if (success) {
         setIsEditing(false);
+        toast.success("Message updated");
       } else {
         console.error("Failed to edit message");
+        toast.error("Failed to update message");
       }
     } catch (error) {
       console.error("Error editing message:", error);
+      toast.error("Failed to update message");
     } finally {
       setIsSubmitting(false);
     }
@@ -111,6 +122,39 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     }
     setIsPressing(false);
   };
+
+  // Show deleted message placeholder
+  if (message.content === '[deleted]' || message.content === '') {
+    return (
+      <div className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'} mb-3`}>
+        {!isSentByMe && (
+          <Avatar className="h-8 w-8 mr-2 self-end">
+            <AvatarImage src={otherUserAvatar} />
+            <AvatarFallback>
+              {message.senderId.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        )}
+        <div
+          className={`max-w-[70%] rounded-lg p-3 border-2 border-dashed border-gray-600 bg-gray-800/50`}
+        >
+          <p className="text-gray-500 italic text-sm">This message was deleted</p>
+          <div className="text-xs mt-1 text-gray-500">
+            {format(new Date(message.createdAt), 'h:mm a')}
+          </div>
+        </div>
+        {isSentByMe && (
+          <Avatar className="h-8 w-8 ml-2 self-end">
+            <AvatarImage src={currentUser.avatar || "/assets/avatar1.jpg"} />
+            <AvatarFallback>
+              {currentUser.displayName?.substring(0, 2) || 
+               currentUser.username.substring(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -190,12 +234,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 className="px-2 py-1 text-xs bg-yellow-500 text-black rounded"
                 disabled={isSubmitting || editContent.trim() === ''}
               >
-                Save
+                {isSubmitting ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <div>
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            {/* Show edited indicator - placeholder for now */}
+            {message.content !== message.content && (
+              <div className="flex items-center mt-1">
+                <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1" />
+                <span className="text-xs text-green-500">edited</span>
+              </div>
+            )}
+          </div>
         )}
         
         {!isEditing && !isDeleting && (
