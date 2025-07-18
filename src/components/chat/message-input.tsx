@@ -108,9 +108,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" align="start">
             <div className="grid grid-cols-6 gap-2">
-              {EMOJI_LIST.map(emoji => (
+              {EMOJI_LIST.map((emoji, index) => (
                 <button
-                  key={emoji}
+                  key={`${emoji}-${index}`}
                   type="button"
                   className="text-xl hover:bg-gray-100 p-1 rounded cursor-pointer"
                   onClick={() => insertEmoji(emoji)}

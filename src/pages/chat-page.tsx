@@ -320,8 +320,8 @@ const ChatPage: React.FC = () => {
                           </div>
                            {chat.lastMessage && (
                             <p className="text-sm text-gray-400 truncate">
-                              {/* Show emoji based on message status */}
-                              {chat.lastMessage.includes('reply') ? '😂' : '😶'}: {chat.lastMessage}
+                              {/* Show 😁 for replies from other user, 😶 for sent messages */}
+                              {chat.participants.find(id => id !== user?.id) ? '😁' : '😶'}: {chat.lastMessage}
                             </p>
                           )}
                         </div>
@@ -362,12 +362,10 @@ const ChatPage: React.FC = () => {
                 isConnected={isConnected}
               />
               
-              <div 
-                className="flex-1 overflow-y-auto p-4 bg-gray-900 overscroll-contain scroll-smooth" 
+              <ScrollArea 
+                className="flex-1 p-4 bg-gray-900" 
                 style={{ 
-                  height: 'calc(100% - 120px)',
-                  scrollBehavior: 'smooth',
-                  WebkitOverflowScrolling: 'touch',
+                  height: 'calc(100vh - 200px)',
                   maxHeight: 'calc(100vh - 200px)'
                 }}
                 ref={messagesContainerRef}
@@ -414,7 +412,7 @@ const ChatPage: React.FC = () => {
                     <div ref={messageEndRef} />
                   </div>
                 )}
-              </div>
+              </ScrollArea>
               
               {/* Scroll to bottom button */}
               {showScrollToBottom && (

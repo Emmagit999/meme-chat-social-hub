@@ -47,6 +47,7 @@ export const Navbar = () => {
       label: 'Notifications',
       icon: <Bell className="h-5 w-5" />,
       activeIcon: <Bell className="h-5 w-5 text-yellow-500" />,
+      showGoldenBadge: true,
     }
   ];
   
@@ -94,6 +95,7 @@ export const Navbar = () => {
               {...item} 
               isMobile={isMobile}
               badge={item.path === '/chat' ? unreadMessages : item.path === '/notifications' ? unreadCount : 0}
+              showGoldenBadge={item.showGoldenBadge}
             />
           ))}
         </div>
@@ -114,9 +116,10 @@ interface NavItemProps {
   activeIcon?: React.ReactNode;
   isMobile?: boolean;
   badge?: number;
+  showGoldenBadge?: boolean;
 }
 
-const NavItem = ({ path, label, icon, activeIcon, isMobile, badge = 0 }: NavItemProps) => {
+const NavItem = ({ path, label, icon, activeIcon, isMobile, badge = 0, showGoldenBadge }: NavItemProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isActive = location.pathname.split('/')[1] === path.split('/')[1];
@@ -132,7 +135,7 @@ const NavItem = ({ path, label, icon, activeIcon, isMobile, badge = 0 }: NavItem
     >
       <div className="relative">
         {isActive ? activeIcon || icon : icon}
-        {badge > 0 && <NotificationBadge count={badge} />}
+        {badge > 0 && <NotificationBadge count={badge} className={showGoldenBadge ? "bg-yellow-500 text-black animate-pulse" : ""} />}
       </div>
       {isMobile && (
         <span className="text-[10px] mt-1">{label}</span>

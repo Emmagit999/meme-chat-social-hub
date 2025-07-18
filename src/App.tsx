@@ -24,6 +24,7 @@ import NotificationsPage from "@/pages/notifications-page";
 import PostDetailPage from "@/pages/post-detail-page";
 import AboutPage from "@/pages/about-page";
 import { usePalRequests } from "@/hooks/use-pal-requests";
+import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -46,6 +47,7 @@ const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
   const { requestCount } = usePalRequests();
+  useRealTimeNotifications();
   
   if (isLoading) {
     return <SplashScreen />;
@@ -128,14 +130,9 @@ function App() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    // Request notification permission as early as possible
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-    
     const timer = setTimeout(() => {
       setInitialLoading(false);
-    }, 1000);
+    }, 2500); // Show splash screen for 2.5 seconds
     
     return () => clearTimeout(timer);
   }, []);
