@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useVideoManager } from "@/hooks/use-video-manager";
 import { ShareDialog } from "@/components/posts/share-dialog";
+import { VideoPlayer } from "./video-player";
 
 interface PostCardProps {
   post: {
@@ -208,37 +209,12 @@ export const PostCard: React.FC<PostCardProps> = ({
           )}
           
           {post.video && (
-            <div 
-              className="relative flex justify-center"
-              onMouseEnter={() => !isMobile && setIsHovering(true)}
-              onMouseLeave={() => !isMobile && setIsHovering(false)}
-            >
-              <video 
-                ref={videoRef}
-                controls={isMobile || userClickedPlay}
-                className="rounded-md w-auto mx-auto max-h-[400px] object-contain"
-                playsInline
-                preload="metadata"
-                loop
-                onClick={handleVideoClick}
-                poster={post.video + '#t=0.1'} // Add a poster from the first frame
-              >
-                <source src={post.video} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
-              {!isMobile && !userClickedPlay && (isHovering || !userClickedPlay) && (
-                <div 
-                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-md cursor-pointer"
-                  onClick={handleVideoClick}
-                >
-                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                      <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                    </svg>
-                  </div>
-                </div>
-              )}
-            </div>
+            <VideoPlayer 
+              src={post.video}
+              videoId={post.id}
+              className="rounded-md w-auto mx-auto max-h-[400px]"
+              autoPlay={true}
+            />
           )}
         </div>
       </div>

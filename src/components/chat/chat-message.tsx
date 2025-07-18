@@ -241,8 +241,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         ) : (
           <div>
             <p className="whitespace-pre-wrap break-words">{message.content}</p>
-            {/* Show edited indicator - placeholder for now */}
-            {message.content !== message.content && (
+            {/* Show edited indicator */}
+            {message.edited && (
               <div className="flex items-center mt-1">
                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1" />
                 <span className="text-xs text-green-500">edited</span>

@@ -52,6 +52,8 @@ export type Message = {
   content: string;
   read: boolean;
   createdAt: Date;
+  edited?: boolean;
+  editedAt?: string;
 };
 
 export type Chat = {

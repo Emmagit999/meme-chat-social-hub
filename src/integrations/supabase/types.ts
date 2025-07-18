@@ -180,6 +180,8 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          edited: boolean | null
+          edited_at: string | null
           id: string
           read: boolean | null
           receiver_id: string
@@ -188,6 +190,8 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          edited?: boolean | null
+          edited_at?: string | null
           id?: string
           read?: boolean | null
           receiver_id: string
@@ -196,6 +200,8 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          edited?: boolean | null
+          edited_at?: string | null
           id?: string
           read?: boolean | null
           receiver_id?: string

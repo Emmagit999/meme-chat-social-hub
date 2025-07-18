@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatMessage } from "@/components/chat/chat-message";
 import { MessageInput } from "@/components/chat/message-input";
+import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { User } from '@/types';
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,6 +75,9 @@ const ChatPage: React.FC = () => {
   const [suggestedUsers, setSuggestedUsers] = useState<User[]>([]);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { startNotification, stopNotification } = useChatNotifications({
+    title: '🔴 New Message!'
+  });
   
   useEffect(() => {
     // Fetch suggested users when component mounts
@@ -120,7 +124,7 @@ const ChatPage: React.FC = () => {
     }
   }, [messages, user?.id]);
   
-  // Auto-scroll to bottom for new messages
+  // Auto-scroll to bottom for new messages and handle notifications
   useEffect(() => {
     if (messagesContainerRef.current && messages.length > 0) {
       const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
@@ -129,8 +133,14 @@ const ChatPage: React.FC = () => {
       if (isNearBottom) {
         scrollToBottom();
       }
+      
+      // Check for new unread messages and trigger tab notification
+      const newUnreadMessages = messages.filter(m => m.senderId !== user?.id && !m.read);
+      if (newUnreadMessages.length > 0 && document.hidden) {
+        startNotification();
+      }
     }
-  }, [messages]);
+  }, [messages, user?.id, startNotification]);
 
   useEffect(() => {
     // Handle mobile view switching between chat list and active chat
@@ -308,9 +318,10 @@ const ChatPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          {chat.lastMessage && (
+                           {chat.lastMessage && (
                             <p className="text-sm text-gray-400 truncate">
-                              {chat.lastMessage}
+                              {/* Show emoji based on message status */}
+                              {chat.lastMessage.includes('reply') ? '😂' : '😶'}: {chat.lastMessage}
                             </p>
                           )}
                         </div>
@@ -352,11 +363,12 @@ const ChatPage: React.FC = () => {
               />
               
               <div 
-                className="flex-1 overflow-y-auto p-4 bg-gray-900 overscroll-contain" 
+                className="flex-1 overflow-y-auto p-4 bg-gray-900 overscroll-contain scroll-smooth" 
                 style={{ 
                   height: 'calc(100% - 120px)',
                   scrollBehavior: 'smooth',
-                  WebkitOverflowScrolling: 'touch'
+                  WebkitOverflowScrolling: 'touch',
+                  maxHeight: 'calc(100vh - 200px)'
                 }}
                 ref={messagesContainerRef}
               >

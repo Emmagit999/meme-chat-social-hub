@@ -134,7 +134,9 @@ export const useMessaging = () => {
       
       const { error } = await supabase
         .from('messages')
-        .delete()
+        .update({ 
+          content: '[deleted]'
+        })
         .eq('id', messageId);
         
       if (error) {
@@ -170,7 +172,11 @@ export const useMessaging = () => {
       
       const { error } = await supabase
         .from('messages')
-        .update({ content: newContent })
+        .update({ 
+          content: newContent,
+          edited: true,
+          edited_at: new Date().toISOString()
+        })
         .eq('id', messageId);
         
       if (error) {
