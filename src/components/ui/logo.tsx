@@ -1,19 +1,16 @@
 
 import React from "react";
-// Use a relative path or import from public directory instead of /uploads
-import { defaultLogo } from "@/assets/index";
 
 export default function AppLogo({ size = 80 }: { size?: number }) {
-  // Try to get the uploaded image from the user object or environment
-  // For now, use the default logo as we don't have access to the actual uploaded image
-  const logoSrc = defaultLogo;
-
   return (
-    <img
-      src={logoSrc}
-      alt="App Logo"
-      style={{ width: size, height: size, objectFit: "contain" }}
-      className="mx-auto rounded-[16px] border-4 border-yellow-400 shadow-gold bg-gradient-to-br from-yellow-200 to-yellow-50"
-    />
+    <div 
+      className="mx-auto rounded-[16px] border-4 border-yellow-400 shadow-gold bg-gradient-to-br from-yellow-200 to-yellow-50 flex items-center justify-center text-black font-bold text-xs"
+      style={{ width: size, height: size }}
+    >
+      <span className="text-center leading-tight">
+        MemChat<br />
+        <span className="text-[0.6em]">Social App</span>
+      </span>
+    </div>
   );
 }

@@ -235,15 +235,15 @@ const ChatPage: React.FC = () => {
       <div className="container py-16 pb-24 md:pb-16 max-w-6xl">
         <div className="flex h-[calc(100vh-8rem)] bg-card rounded-lg border border-border overflow-hidden">
           {/* Chat List Sidebar */}
-          <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-80 border-r border-border flex-col`}>
-            <div className="p-4 border-b border-border">
-              <h2 className="text-xl font-semibold mb-3">Messages</h2>
+          <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-96 lg:w-80 border-r border-border flex-col`}>
+            <div className="p-3 border-b border-border">
+              <h2 className="text-lg font-semibold mb-2">Messages</h2>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <input
                   type="text"
                   placeholder="Search conversations..."
-                  className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full pl-10 pr-4 py-1.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />

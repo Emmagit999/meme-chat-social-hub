@@ -146,9 +146,9 @@ export const useMessaging = () => {
       
       console.log("Message successfully deleted");
       
-      // Update UI - trigger a refresh via chatSendMessage to reload messages
-      if (chatSendMessage) {
-        await chatSendMessage(""); // This will refresh the messages
+      // Update UI - trigger a refresh via getFriends to reload chats and messages
+      if (getFriends) {
+        await getFriends();
       }
       
       return true;
@@ -186,9 +186,9 @@ export const useMessaging = () => {
       
       console.log("Message successfully edited");
       
-      // Update UI - trigger a refresh via chatSendMessage to reload messages
-      if (chatSendMessage) {
-        await chatSendMessage(""); // This will refresh the messages
+      // Update UI - trigger a refresh via getFriends to reload chats and messages
+      if (getFriends) {
+        await getFriends();
       }
       
       return true;

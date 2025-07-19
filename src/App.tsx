@@ -27,6 +27,7 @@ import SettingsPage from "@/pages/settings-page";
 import OpaySupport from "@/pages/opay-support";
 import { usePalRequests } from "@/hooks/use-pal-requests";
 import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
+import { useRealTimeSync } from "@/hooks/use-real-time-sync";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +51,7 @@ const AppRoutes = () => {
   const isMobile = useIsMobile();
   const { requestCount } = usePalRequests();
   useRealTimeNotifications();
+  useRealTimeSync();
   
   if (isLoading) {
     return <SplashScreen />;
