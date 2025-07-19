@@ -97,11 +97,12 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
-        className="w-full h-full object-cover rounded-lg"
+        className="w-full aspect-video object-cover rounded-lg"
         muted
         loop
         playsInline
         preload="metadata"
+        style={{ maxHeight: '400px' }}
       />
       
       {/* Play/Pause overlay */}

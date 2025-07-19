@@ -23,6 +23,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import NotificationsPage from "@/pages/notifications-page";
 import PostDetailPage from "@/pages/post-detail-page";
 import AboutPage from "@/pages/about-page";
+import SettingsPage from "@/pages/settings-page";
+import OpaySupport from "@/pages/opay-support";
 import { usePalRequests } from "@/hooks/use-pal-requests";
 import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
 
@@ -96,7 +98,7 @@ const AppRoutes = () => {
           />
           <Route 
             path="/post/:postId" 
-            element={<AuthCheck><PostDetailPage /></AuthCheck>} 
+            element={<PostDetailPage />} 
           />
           <Route 
             path="/chat" 
@@ -118,6 +120,14 @@ const AppRoutes = () => {
             path="/pals" 
             element={<AuthCheck><PalsPage /></AuthCheck>} 
           />
+          <Route 
+            path="/settings" 
+            element={<AuthCheck><SettingsPage /></AuthCheck>} 
+          />
+          <Route 
+            path="/support" 
+            element={<OpaySupport />} 
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
@@ -132,7 +142,7 @@ function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setInitialLoading(false);
-    }, 2500); // Show splash screen for 2.5 seconds
+    }, 3500); // Show splash screen for 3.5 seconds
     
     return () => clearTimeout(timer);
   }, []);

@@ -5,11 +5,14 @@ import { useData } from '@/context/data-context';
 import { PostCard } from '@/components/posts/post-card';
 import { CommentSection } from '@/components/posts/comment-section';
 import { Button } from '@/components/ui/button';
+import { AuthPrompt } from '@/components/ui/auth-prompt';
+import { useAuth } from '@/context/auth-context';
 import { ArrowLeft, RefreshCcw } from 'lucide-react';
 
 const PostDetailPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
   const { posts, isLoading, refreshData } = useData();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
   const post = posts.find(p => p.id === postId);
@@ -82,7 +85,16 @@ const PostDetailPage: React.FC = () => {
       
       <div className="mt-4">
         <h2 className="text-xl font-semibold mb-4">Comments</h2>
-        <CommentSection postId={post.id} />
+        {isAuthenticated ? (
+          <CommentSection postId={post.id} />
+        ) : (
+          <div className="mt-6">
+            <AuthPrompt 
+              message="Sign in to view comments" 
+              description="Join the conversation and see what others are saying about this post"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

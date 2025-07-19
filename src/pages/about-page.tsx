@@ -11,8 +11,8 @@ const AboutPage: React.FC = () => {
   };
 
   const handleContactDeveloper = () => {
-    // Replace with actual contact method
-    window.open('mailto:support@memechat.app', '_blank');
+    // Contact developer at the specified email
+    window.open('mailto:emzywoo89@gmail.com', '_blank');
   };
 
   return (

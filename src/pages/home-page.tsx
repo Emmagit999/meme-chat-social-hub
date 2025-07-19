@@ -65,11 +65,8 @@ const HomePage: React.FC = () => {
     ? posts 
     : posts.filter(post => post.type === activeFilter);
 
-  // Organize posts - maintain the alternate layout but avoid unnecessary refreshes
-  const organizedPosts = !isMobile ? [
-    ...filteredPosts.filter(post => post.image).slice(0, Math.ceil(filteredPosts.length / 2)),
-    ...filteredPosts.filter(post => post.video).slice(0, Math.floor(filteredPosts.length / 2))
-  ] : filteredPosts;
+  // Mix posts with images and videos for desktop
+  const organizedPosts = filteredPosts;
 
   return (
     <div className="container py-16 pb-24 md:pb-16">

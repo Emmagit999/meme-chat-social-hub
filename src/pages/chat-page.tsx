@@ -231,50 +231,23 @@ const ChatPage: React.FC = () => {
   });
 
   return (
-    <div className="container py-4 px-0 md:px-4 md:py-6 max-w-full md:max-w-6xl mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 h-[calc(100vh-8rem)] overflow-hidden shadow-lg rounded-lg border border-gray-700">
-        {/* Chat List */}
-        {showChatList && (
-          <div className={`${isMobile ? 'col-span-1' : 'md:col-span-1'} bg-gray-900 border-r border-gray-700 flex flex-col h-full`}>
-            <div className="p-4 border-b border-gray-700 bg-black text-yellow-500">
-              <h2 className="font-semibold flex items-center">
-                <span>{user.displayName || user.username}</span>
-                <div className="ml-auto flex gap-2">
-                  {!isConnected && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-400 hover:bg-gray-800"
-                      onClick={() => reconnect()}
-                    >
-                      <WifiOff className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
-                    onClick={() => navigate('/search')}
-                  >
-                    <Search className="h-4 w-4" />
-                  </Button>
-                  <div 
-                    className="bg-yellow-500 text-black h-7 w-7 rounded-full flex items-center justify-center cursor-pointer"
-                    onClick={() => navigate('/merge')}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </div>
-                </div>
-              </h2>
-            </div>
-            
-            <div className="p-2 border-b border-gray-700">
-              <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-yellow-500 placeholder:text-yellow-500/50"
-              />
+    <div className="min-h-screen bg-background">
+      <div className="container py-16 pb-24 md:pb-16 max-w-6xl">
+        <div className="flex h-[calc(100vh-8rem)] bg-card rounded-lg border border-border overflow-hidden">
+          {/* Chat List Sidebar */}
+          <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-80 border-r border-border flex-col`}>
+            <div className="p-4 border-b border-border">
+              <h2 className="text-xl font-semibold mb-3">Messages</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <input
+                  type="text"
+                  placeholder="Search conversations..."
+                  className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
             
             <ScrollArea className="flex-1 overflow-y-auto">
@@ -319,11 +292,11 @@ const ChatPage: React.FC = () => {
                             )}
                           </div>
                            {chat.lastMessage && (
-                            <p className="text-sm text-gray-400 truncate">
-                              {/* Show 😁 for replies from other user, 😶 for sent messages */}
-                              {chat.participants.find(id => id !== user?.id) ? '😁' : '😶'}: {chat.lastMessage}
-                            </p>
-                          )}
+                             <p className="text-sm text-muted-foreground truncate">
+                               {/* Show 😁 for received messages, 😶 for sent messages */}
+                               {chat.lastMessage.startsWith(user?.username || user?.email || '') ? '😶' : '😁'}: {chat.lastMessage}
+                             </p>
+                           )}
                         </div>
                         {chat.unreadCount > 0 && (
                           <div className="bg-yellow-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -347,10 +320,9 @@ const ChatPage: React.FC = () => {
               </Button>
             </div>
           </div>
-        )}
-        
-        {/* Chat Messages */}
-        <div className={`${isMobile ? 'col-span-1' : 'md:col-span-2'} flex flex-col bg-gray-900 ${(!isMobile || !showChatList) ? 'block' : 'hidden'} h-full`}>
+          
+          {/* Chat Messages Area */}
+          <div className={`${!activeChat && isMobile ? 'hidden' : 'flex'} flex-1 flex-col`}>
           {activeChat ? (
             <>
               <ChatHeader 
@@ -362,14 +334,7 @@ const ChatPage: React.FC = () => {
                 isConnected={isConnected}
               />
               
-              <ScrollArea 
-                className="flex-1 p-4 bg-gray-900" 
-                style={{ 
-                  height: 'calc(100vh - 200px)',
-                  maxHeight: 'calc(100vh - 200px)'
-                }}
-                ref={messagesContainerRef}
-              >
+              <ScrollArea className="flex-1 p-4">{/* scrollable message area */}
                 {!isConnected && (
                   <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
                     <WifiOff className="h-4 w-4 mr-2" />
@@ -398,7 +363,7 @@ const ChatPage: React.FC = () => {
                     No messages yet. Say hello!
                   </div>
                 ) : (
-                  <div className="space-y-1 pb-2">
+                  <div className="space-y-4">
                     {messages.map(message => (
                       <ChatMessage
                         key={message.id}
@@ -413,39 +378,23 @@ const ChatPage: React.FC = () => {
                   </div>
                 )}
               </ScrollArea>
-              
-              {/* Scroll to bottom button */}
-              {showScrollToBottom && (
-                <button 
-                  onClick={scrollToBottom} 
-                  className="absolute right-6 bottom-20 bg-yellow-500 text-black rounded-full p-2 shadow-lg flex items-center gap-1 z-20"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                  {unreadCount > 0 && (
-                    <span className="text-xs font-bold">{unreadCount}</span>
-                  )}
-                </button>
-              )}
-              
-              <MessageInput 
-                onSendMessage={sendMessage}
-                isSending={isSending}
-                isConnected={isConnected}
-              />
+              <div className="border-t border-border">
+                <MessageInput 
+                  onSendMessage={sendMessage}
+                  isSending={isSending}
+                  isConnected={isConnected}
+                />
+              </div>
             </>
           ) : (
-            <div className="h-full relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute top-3 left-3 z-10 text-yellow-500 hover:text-yellow-400 hover:bg-gray-800"
-                onClick={() => navigate('/pals')}
-              >
-                <Users className="h-5 w-5" />
-              </Button>
-              <EmptyState />
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>Select a conversation to start messaging</p>
+              </div>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

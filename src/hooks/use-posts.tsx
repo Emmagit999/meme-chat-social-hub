@@ -285,15 +285,7 @@ export const usePosts = () => {
         // Get post info for notification
         const postToLike = posts.find(p => p.id === postId);
         
-        // Update likes in database
-        const { error } = await supabase
-          .from('posts')
-          .update({ likes: posts.find(p => p.id === postId)?.likes + 1 || 1 })
-          .eq('id', postId);
-
-        if (error) throw error;
-
-        // Record the like in post_likes table
+        // Record the like in post_likes table first
         const { error: likeError } = await supabase
           .from('post_likes')
           .insert({
@@ -302,6 +294,16 @@ export const usePosts = () => {
           });
 
         if (likeError) throw likeError;
+
+        // Then update likes count in posts table
+        const { data: updatedPost, error } = await supabase
+          .from('posts')
+          .update({ likes: posts.find(p => p.id === postId)?.likes + 1 || 1 })
+          .eq('id', postId)
+          .select()
+          .single();
+
+        if (error) throw error;
         
         // Add notification for the post owner if it's not the current user
         if (postToLike && postToLike.userId !== user.id) {
