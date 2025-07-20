@@ -26,14 +26,14 @@ import { uploadToStorage } from "@/utils/storage";
 interface CreatePostFormProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultType?: 'meme' | 'roast' | 'joke';
+  defaultType?: 'meme' | 'roast' | 'joke' | 'posts';
 }
 
 export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose, defaultType = 'meme' }) => {
   const { user } = useAuth();
   const { addPost } = useData();
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke'>(defaultType);
+  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke' | 'posts'>(defaultType);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -108,7 +108,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
         <DialogHeader>
           <DialogTitle className="text-yellow-500">Create a Post</DialogTitle>
           <DialogDescription>
-            Share a meme, joke, or roast with the community
+            Share a meme, joke, roast, or regular post with the community
           </DialogDescription>
         </DialogHeader>
         
@@ -126,15 +126,16 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
           
           <Select 
             value={postType} 
-            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke')}
+            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts')}
           >
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="meme">Meme</SelectItem>
               <SelectItem value="roast">Roast</SelectItem>
               <SelectItem value="joke">Joke</SelectItem>
+              <SelectItem value="posts">Posts</SelectItem>
             </SelectContent>
           </Select>
           

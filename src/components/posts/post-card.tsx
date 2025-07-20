@@ -25,7 +25,7 @@ interface PostCardProps {
     likes: number;
     comments: number;
     createdAt: Date;
-    type: 'meme' | 'roast' | 'joke';
+    type: 'meme' | 'roast' | 'joke' | 'posts';
   };
   className?: string;
   hideCommentLink?: boolean;

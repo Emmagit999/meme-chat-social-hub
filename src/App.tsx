@@ -25,6 +25,7 @@ import PostDetailPage from "@/pages/post-detail-page";
 import AboutPage from "@/pages/about-page";
 import SettingsPage from "@/pages/settings-page";
 import OpaySupport from "@/pages/opay-support";
+import SupportPage from "@/pages/support-page";
 import { usePalRequests } from "@/hooks/use-pal-requests";
 import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
 import { useRealTimeSync } from "@/hooks/use-real-time-sync";
@@ -128,6 +129,10 @@ const AppRoutes = () => {
           />
           <Route 
             path="/support" 
+            element={<SupportPage />} 
+          />
+          <Route 
+            path="/opay-support" 
             element={<OpaySupport />} 
           />
           <Route path="*" element={<NotFound />} />

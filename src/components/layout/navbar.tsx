@@ -37,6 +37,12 @@ export const Navbar = () => {
       activeIcon: <Users className="h-5 w-5 text-yellow-500" />,
     },
     {
+      path: '/merge',
+      label: 'Merge',
+      icon: <Users className="h-5 w-5" />,
+      activeIcon: <Users className="h-5 w-5 text-yellow-500" />,
+    },
+    {
       path: '/chat',
       label: 'Chat',
       icon: <MessageCircle className="h-5 w-5" />,

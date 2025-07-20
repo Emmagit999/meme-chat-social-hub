@@ -63,6 +63,7 @@ const ChatPage: React.FC = () => {
     reconnect,
     getUserById,
     getSuggestedUsers,
+    getFriends,
     lastError
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
@@ -237,7 +238,22 @@ const ChatPage: React.FC = () => {
           {/* Chat List Sidebar */}
           <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-96 lg:w-80 border-r border-border flex-col`}>
             <div className="p-3 border-b border-border">
-              <h2 className="text-lg font-semibold mb-2">Messages</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-lg font-semibold">Messages</h2>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    getFriends();
+                    reconnect();
+                  }}
+                  title="Refresh messages"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="sr-only">Refresh</span>
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                 <input

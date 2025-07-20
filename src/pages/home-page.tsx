@@ -12,7 +12,7 @@ import { usePushNotifications } from "@/hooks/use-push-notifications";
 const HomePage: React.FC = () => {
   const { posts, isLoading, refreshData } = useData();
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke' | 'posts'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
   const isMobile = useIsMobile();
@@ -73,19 +73,17 @@ const HomePage: React.FC = () => {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold">Home Feed</h1>
-          {/* Hidden refresh button unless needed */}
-          {connectionIssue && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="rounded-full text-red-500"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              <span className="sr-only">Refresh</span>
-            </Button>
-          )}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`rounded-full ${connectionIssue ? 'text-red-500' : 'text-muted-foreground hover:text-foreground'}`}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title="Refresh posts"
+          >
+            <RefreshCcw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span className="sr-only">Refresh</span>
+          </Button>
         </div>
         
         <div className="flex items-center gap-4 flex-wrap">
@@ -94,6 +92,7 @@ const HomePage: React.FC = () => {
             <ToggleGroupItem value="meme" aria-label="Filter by memes">Memes</ToggleGroupItem>
             <ToggleGroupItem value="roast" aria-label="Filter by roasts">Roasts</ToggleGroupItem>
             <ToggleGroupItem value="joke" aria-label="Filter by jokes">Jokes</ToggleGroupItem>
+            <ToggleGroupItem value="posts" aria-label="Filter by posts">Posts</ToggleGroupItem>
           </ToggleGroup>
           
           <Button 

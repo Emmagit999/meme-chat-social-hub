@@ -19,7 +19,7 @@ export type Post = {
   likes: number;
   comments: number;
   createdAt: Date;
-  type: 'meme' | 'roast' | 'joke';
+  type: 'meme' | 'roast' | 'joke' | 'posts';
 };
 
 export type CommentReply = {

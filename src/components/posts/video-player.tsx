@@ -98,11 +98,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         ref={videoRef}
         src={src}
         className="w-full aspect-video object-cover rounded-lg"
-        muted={autoPlay}
+        muted={false}
         loop
         playsInline
         preload="metadata"
-        controls={!autoPlay}
+        controls={true}
         style={{ maxHeight: '400px' }}
       />
       
