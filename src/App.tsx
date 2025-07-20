@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navbar } from "@/components/layout/navbar";
 import { AuthProvider } from "@/context/auth-context";
 import { DataProvider } from "@/context/data-context";
@@ -142,6 +143,17 @@ const AppRoutes = () => {
   );
 };
 
+// Create QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      refetchOnWindowFocus: true,
+      retry: 3,
+    },
+  },
+});
+
 function App() {
   const [initialLoading, setInitialLoading] = useState(true);
   const isMobile = useIsMobile();
@@ -159,20 +171,22 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen bg-background ${isMobile ? 'pb-16' : ''}`}>
-      <AuthProvider>
-        <DataProvider>
-          <Router>
-            <AppRoutes />
-            <Toaster 
-              position={isMobile ? "bottom-center" : "top-center"} 
-              closeButton 
-              richColors 
-            />
-          </Router>
-        </DataProvider>
-      </AuthProvider>
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div className={`min-h-screen bg-background ${isMobile ? 'pb-16' : ''}`}>
+        <AuthProvider>
+          <DataProvider>
+            <Router>
+              <AppRoutes />
+              <Toaster 
+                position={isMobile ? "bottom-center" : "top-center"} 
+                closeButton 
+                richColors 
+              />
+            </Router>
+          </DataProvider>
+        </AuthProvider>
+      </div>
+    </QueryClientProvider>
   );
 }
 
