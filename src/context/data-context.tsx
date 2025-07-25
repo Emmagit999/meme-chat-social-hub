@@ -4,6 +4,7 @@ import { Post, Comment, CommentReply } from '@/types';
 import { usePosts } from '@/hooks/use-posts';
 import { useComments } from '@/hooks/use-comments';
 import { useRealTimeSync } from '@/hooks/use-real-time-sync';
+import { useRealTimePosts } from '@/hooks/use-real-time-posts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -54,6 +55,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Enable real-time sync
   useRealTimeSync();
+  useRealTimePosts();
 
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);

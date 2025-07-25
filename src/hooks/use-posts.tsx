@@ -34,7 +34,7 @@ export const usePosts = () => {
         likes: post.likes || 0,
         comments: post.comments || 0,
         createdAt: new Date(post.created_at),
-        type: post.type as 'meme' | 'roast' | 'joke'
+        type: post.type as 'meme' | 'roast' | 'joke' | 'posts'
       })) || []);
       
       return postsData;
@@ -102,7 +102,7 @@ export const usePosts = () => {
           likes: newPost.likes || 0,
           comments: newPost.comments || 0,
           createdAt: new Date(newPost.created_at),
-          type: newPost.type as 'meme' | 'roast' | 'joke'
+          type: newPost.type as 'meme' | 'roast' | 'joke' | 'posts'
         };
         
         setPosts(prev => [formattedPost, ...prev]);
@@ -124,7 +124,7 @@ export const usePosts = () => {
                 video: updatedPost.video,
                 likes: updatedPost.likes || 0,
                 comments: updatedPost.comments || 0,
-                type: updatedPost.type as 'meme' | 'roast' | 'joke',
+                type: updatedPost.type as 'meme' | 'roast' | 'joke' | 'posts',
                 userAvatar: updatedPost.user_avatar || post.userAvatar,
               } 
             : post
@@ -155,8 +155,8 @@ export const usePosts = () => {
     }
 
     try {
-      const validType: 'meme' | 'roast' | 'joke' = 
-        (postData.type === 'meme' || postData.type === 'roast' || postData.type === 'joke') 
+      const validType: 'meme' | 'roast' | 'joke' | 'posts' = 
+        (postData.type === 'meme' || postData.type === 'roast' || postData.type === 'joke' || postData.type === 'posts') 
           ? postData.type 
           : 'meme';
 
@@ -188,7 +188,7 @@ export const usePosts = () => {
           likes: 0,
           comments: 0,
           createdAt: new Date(data.created_at),
-          type: data.type as 'meme' | 'roast' | 'joke'
+          type: data.type as 'meme' | 'roast' | 'joke' | 'posts'
         };
 
         // Real-time will handle adding to list

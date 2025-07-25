@@ -39,8 +39,8 @@ export const Navbar = () => {
     {
       path: '/merge',
       label: 'Merge',
-      icon: <Users className="h-5 w-5" />,
-      activeIcon: <Users className="h-5 w-5 text-yellow-500" />,
+      icon: <span className="text-red-400">❤️</span>,
+      activeIcon: <span className="text-red-500">❤️</span>,
     },
     {
       path: '/chat',

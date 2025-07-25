@@ -111,12 +111,13 @@ export const useRealTimeSync = () => {
       .subscribe();
     channels.push(notificationsChannel);
 
-    // Continuous background sync every 30 seconds
+    // Continuous background sync every 10 seconds for better real-time experience
     const intervalId = setInterval(() => {
       if (navigator.onLine) {
+        console.log('Background sync triggered');
         refreshAllData();
       }
-    }, 30000);
+    }, 10000);
 
     console.log('Enhanced real-time sync initialized with background refresh');
 

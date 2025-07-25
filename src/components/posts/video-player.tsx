@@ -103,6 +103,14 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
         playsInline
         preload="metadata"
         controls={true}
+        onPlay={() => {
+          // Pause all other videos when this one starts playing
+          document.querySelectorAll('video').forEach((video) => {
+            if (video !== videoRef.current && !video.paused) {
+              video.pause();
+            }
+          });
+        }}
         style={{ maxHeight: '400px' }}
       />
       
