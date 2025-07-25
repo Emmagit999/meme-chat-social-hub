@@ -12,6 +12,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useVideoManager } from "@/hooks/use-video-manager";
 import { ShareDialog } from "@/components/posts/share-dialog";
 import { VideoPlayer } from "./video-player";
+import { OnlineIndicator } from "@/components/ui/online-indicator";
 
 interface PostCardProps {
   post: {
@@ -168,12 +169,13 @@ export const PostCard: React.FC<PostCardProps> = ({
           <div className="flex items-center gap-3">
             <div 
               onClick={handleUserProfile}
-              className="cursor-pointer"
+              className="cursor-pointer relative"
             >
               <Avatar className="h-10 w-10 border border-yellow-500/30 cursor-pointer">
                 <AvatarImage src={post.userAvatar} />
                 <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
+              <OnlineIndicator userId={post.userId} className="bottom-0 right-0" />
             </div>
             <div>
               <div 

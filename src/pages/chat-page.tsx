@@ -16,6 +16,8 @@ import { useChatNotifications } from "@/hooks/use-chat-notifications";
 import { User } from '@/types';
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OnlineUsersList } from "@/components/chat/online-users-list";
+import { OnlineIndicator } from "@/components/ui/online-indicator";
 
 const EmptyState = () => (
   <div className="h-full flex items-center justify-center flex-col p-4 text-center">

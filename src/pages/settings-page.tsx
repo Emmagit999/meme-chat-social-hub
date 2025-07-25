@@ -148,7 +148,7 @@ const SettingsPage: React.FC = () => {
                   Let others see when you're online
                 </p>
               </div>
-              <Switch defaultChecked />
+              <Switch defaultChecked id="online-status-toggle" />
             </div>
           </CardContent>
         </Card>

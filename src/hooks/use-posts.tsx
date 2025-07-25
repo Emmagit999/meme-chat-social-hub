@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
 import { toast } from "sonner";
+import { useEnhancedRealTime } from './use-enhanced-real-time';
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from './use-notifications';
 

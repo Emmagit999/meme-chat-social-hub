@@ -219,23 +219,23 @@ export const useMessaging = () => {
   }, []);
 
   const reconnect = useCallback(async () => {
-    if (!navigator.onLine) return;
-    
     try {
-      // Silent reconnection attempt
       setIsConnected(false);
+      console.log('Attempting to reconnect...');
       
-      // Try to re-establish connection with Supabase
+      // Re-establish connection with Supabase
       await supabase.auth.refreshSession();
       
-      // Try to fetch friends data to verify connection
+      // Verify connection by fetching data
       if (getFriends) {
         await getFriends();
       }
       
       setIsConnected(true);
+      console.log('Reconnection successful');
     } catch (error) {
       console.error('Error during reconnection:', error);
+      setIsConnected(navigator.onLine);
     }
   }, [getFriends]);
 

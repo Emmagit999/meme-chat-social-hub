@@ -1,7 +1,7 @@
 
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessagesSquare, Search, Bell, Users } from 'lucide-react';
+import { Home, MessagesSquare, Search, Bell, Users, Settings, Info } from 'lucide-react';
 import { useNotifications } from '@/hooks/use-notifications';
 import { PalRequestContext } from '@/App';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -48,23 +48,43 @@ export const NavbarItems: React.FC = () => {
   const requestCount = useContext(PalRequestContext);
   const isMobile = useIsMobile();
 
+  const navItems = [
+    { to: "/home", icon: <Home className="h-6 w-6" />, label: "Home" },
+    { to: "/chat", icon: <MessagesSquare className="h-6 w-6" />, label: "Chat" },
+    { to: "/search", icon: <Search className="h-6 w-6" />, label: "Search" },
+    { 
+      to: "/notifications", 
+      icon: <Bell className="h-6 w-6" />, 
+      label: "Notifications",
+      badgeCount: unreadCount 
+    },
+    { 
+      to: "/pals", 
+      icon: <Users className="h-6 w-6" />, 
+      label: "Pals",
+      badgeCount: requestCount 
+    }
+  ];
+
+  // Add settings and about for mobile
+  if (isMobile) {
+    navItems.push(
+      { to: "/settings", icon: <Settings className="h-6 w-6" />, label: "Settings" },
+      { to: "/about", icon: <Info className="h-6 w-6" />, label: "About" }
+    );
+  }
+
   return (
     <div className={`flex ${isMobile ? 'flex-row w-full justify-around' : 'flex-row space-x-1'}`}>
-      <NavbarItem to="/home" icon={<Home className="h-6 w-6" />} label="Home" />
-      <NavbarItem to="/chat" icon={<MessagesSquare className="h-6 w-6" />} label="Chat" />
-      <NavbarItem to="/search" icon={<Search className="h-6 w-6" />} label="Search" />
-      <NavbarItem 
-        to="/notifications" 
-        icon={<Bell className="h-6 w-6" />} 
-        label="Notifications"
-        badgeCount={unreadCount} 
-      />
-      <NavbarItem 
-        to="/pals" 
-        icon={<Users className="h-6 w-6" />} 
-        label="Pals"
-        badgeCount={requestCount} 
-      />
+      {navItems.map((item) => (
+        <NavbarItem 
+          key={item.to}
+          to={item.to}
+          icon={item.icon}
+          label={item.label}
+          badgeCount={item.badgeCount}
+        />
+      ))}
     </div>
   );
 };
