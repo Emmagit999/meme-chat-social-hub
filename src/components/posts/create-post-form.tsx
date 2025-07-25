@@ -37,6 +37,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [posting, setPosting] = useState(false);
 
   const handleImageSelect = async (file: File) => {
     setUploading(true);
@@ -68,7 +69,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
     setUploading(false);
   };
 
-  const handlePostSubmit = () => {
+  const handlePostSubmit = async () => {
     if (!user) return;
     
     if (!content.trim()) {
@@ -76,18 +77,28 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
       return;
     }
     
-    addPost({
-      userId: user.id,
-      username: user.username,
-      userAvatar: user.avatar,
-      content,
-      image: mediaType === 'image' ? mediaPreview : undefined,
-      video: mediaType === 'video' ? mediaPreview : undefined,
-      type: postType
-    });
+    setPosting(true);
+    toast.loading("Creating your post...", { id: "creating-post" });
     
-    resetForm();
-    onClose();
+    try {
+      await addPost({
+        userId: user.id,
+        username: user.username,
+        userAvatar: user.avatar,
+        content,
+        image: mediaType === 'image' ? mediaPreview : undefined,
+        video: mediaType === 'video' ? mediaPreview : undefined,
+        type: postType
+      });
+      
+      toast.success("Post created successfully!", { id: "creating-post" });
+      resetForm();
+      onClose();
+    } catch (error) {
+      toast.error("Failed to create post", { id: "creating-post" });
+    } finally {
+      setPosting(false);
+    }
   };
   
   const removeMedia = () => {
@@ -182,9 +193,10 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
           <Button 
             type="button" 
             onClick={handlePostSubmit}
-            className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black font-bold"
+            disabled={posting || uploading}
+            className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-black font-bold disabled:opacity-50"
           >
-            Post
+            {posting ? "Posting..." : "Post"}
           </Button>
         </DialogFooter>
       </DialogContent>

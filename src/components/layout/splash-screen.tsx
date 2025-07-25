@@ -6,13 +6,13 @@ import loadingGif from "@/assets/loading-animation.gif";
 export default function SplashScreen() {
   return (
     <div className="flex flex-col min-h-screen justify-center items-center bg-gradient-to-br from-memeGreen to-yellow-100 animate-fade-in">
-      <AppLogo size={120} />
-      <div className="mt-6 text-8xl">😂</div>
-      <div className="mt-8 flex flex-col items-center">
+      <h1 className="text-4xl font-bold text-black mb-8">MEMES</h1>
+      <div className="text-[120px] mb-8">😂</div>
+      <div className="flex flex-col items-center">
         <img 
           src={loadingGif} 
           alt="Loading..." 
-          className="w-16 h-16 object-contain animate-pulse"
+          className="w-24 h-24 object-contain"
         />
         <p className="mt-4 text-yellow-600 font-medium">Loading your experience...</p>
       </div>

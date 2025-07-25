@@ -97,12 +97,13 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
       <video
         ref={videoRef}
         src={src}
-        className="w-full aspect-video object-cover rounded-lg"
+        className="w-full object-cover rounded-lg"
         muted={false}
         loop
         playsInline
         preload="metadata"
-        controls={true}
+        controls={false}
+        onClick={handleVideoClick}
         onPlay={() => {
           // Pause all other videos when this one starts playing
           document.querySelectorAll('video').forEach((video) => {
@@ -111,7 +112,7 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
             }
           });
         }}
-        style={{ maxHeight: '400px' }}
+        style={{ aspectRatio: '16/9', maxHeight: '500px' }}
       />
       
       {/* Play/Pause overlay */}

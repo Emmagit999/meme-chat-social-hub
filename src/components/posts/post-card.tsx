@@ -196,25 +196,28 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Post content */}
         <p className="text-white mb-4">{post.content}</p>
         
-        {/* Improved media layout with consistent sizing */}
-        <div className="media-container relative mb-4">
+        {/* Enhanced media layout with full width and better centering */}
+        <div className="media-container relative mb-4 w-full">
           {post.image && (
-            <div className="flex justify-center">
+            <div className="w-full flex justify-center bg-black rounded-md overflow-hidden">
               <img 
                 src={post.image} 
                 alt="Post" 
-                className="rounded-md object-contain max-h-[400px] w-auto mx-auto"
+                className="w-full max-h-[500px] object-cover rounded-md"
+                style={{ aspectRatio: 'auto' }}
               />
             </div>
           )}
           
           {post.video && (
-            <VideoPlayer 
-              src={post.video}
-              videoId={post.id}
-              className="rounded-md w-auto mx-auto max-h-[400px]"
-              autoPlay={true}
-            />
+            <div className="w-full bg-black rounded-md overflow-hidden">
+              <VideoPlayer 
+                src={post.video}
+                videoId={post.id}
+                className="w-full max-h-[500px] rounded-md"
+                autoPlay={false}
+              />
+            </div>
           )}
         </div>
       </div>
