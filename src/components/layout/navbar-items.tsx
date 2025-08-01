@@ -1,8 +1,9 @@
 
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessagesSquare, Search, Bell, Users, Settings, Info } from 'lucide-react';
+import { Home, MessagesSquare, Search, Bell, Users, Settings, Info, Heart } from 'lucide-react';
 import { useNotifications } from '@/hooks/use-notifications';
+import { useMessageNotifications } from '@/hooks/use-message-notifications';
 import { PalRequestContext } from '@/App';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -45,12 +46,18 @@ export const NavbarItem: React.FC<NavbarItemProps> = ({ to, icon, label, badgeCo
 
 export const NavbarItems: React.FC = () => {
   const { unreadCount } = useNotifications();
+  const { unreadCount: messageUnreadCount } = useMessageNotifications();
   const requestCount = useContext(PalRequestContext);
   const isMobile = useIsMobile();
 
   const navItems = [
     { to: "/home", icon: <Home className="h-6 w-6" />, label: "Home" },
-    { to: "/chat", icon: <MessagesSquare className="h-6 w-6" />, label: "Chat" },
+    { 
+      to: "/chat", 
+      icon: <MessagesSquare className="h-6 w-6" />, 
+      label: "Chat",
+      badgeCount: messageUnreadCount 
+    },
     { to: "/search", icon: <Search className="h-6 w-6" />, label: "Search" },
     { 
       to: "/notifications", 
@@ -60,7 +67,7 @@ export const NavbarItems: React.FC = () => {
     },
     { 
       to: "/pals", 
-      icon: <Users className="h-6 w-6" />, 
+      icon: <Heart className="h-6 w-6" />, 
       label: "Pals",
       badgeCount: requestCount 
     }

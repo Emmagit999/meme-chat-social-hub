@@ -13,6 +13,8 @@ import { useVideoManager } from "@/hooks/use-video-manager";
 import { ShareDialog } from "@/components/posts/share-dialog";
 import { VideoPlayer } from "./video-player";
 import { OnlineIndicator } from "@/components/ui/online-indicator";
+import { useDoubleTapLike } from "@/hooks/use-double-tap-like";
+import { Heart } from "lucide-react";
 
 interface PostCardProps {
   post: {
@@ -53,6 +55,13 @@ export const PostCard: React.FC<PostCardProps> = ({
   const [userClickedPlay, setUserClickedPlay] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  
+  // Double tap to like functionality
+  const { showHeart, handleDoubleTap } = useDoubleTapLike(() => {
+    if (!isLiked) {
+      handleLike();
+    }
+  });
 
   // Update isLiked whenever likedPosts changes
   useEffect(() => {
@@ -201,24 +210,46 @@ export const PostCard: React.FC<PostCardProps> = ({
         {/* Enhanced media layout with full width and better centering */}
         <div className="media-container relative mb-4 w-full">
           {post.image && (
-            <div className="w-full flex justify-center bg-black rounded-md overflow-hidden">
+            <div 
+              className="w-full flex justify-center bg-black rounded-md overflow-hidden relative cursor-pointer"
+              onDoubleClick={handleDoubleTap}
+              onTouchEnd={handleDoubleTap}
+            >
               <img 
                 src={post.image} 
                 alt="Post" 
                 className="w-full max-h-[500px] object-cover rounded-md"
                 style={{ aspectRatio: 'auto' }}
               />
+              {showHeart && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <Heart 
+                    className="text-red-500 animate-ping" 
+                    size={80} 
+                    fill="currentColor"
+                  />
+                </div>
+              )}
             </div>
           )}
           
           {post.video && (
-            <div className="w-full bg-black rounded-md overflow-hidden">
+            <div className="w-full bg-black rounded-md overflow-hidden relative">
               <VideoPlayer 
                 src={post.video}
                 videoId={post.id}
                 className="w-full max-h-[500px] rounded-md"
                 autoPlay={false}
               />
+              {showHeart && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <Heart 
+                    className="text-red-500 animate-ping" 
+                    size={80} 
+                    fill="currentColor"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
