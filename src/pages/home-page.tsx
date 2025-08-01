@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { PostCard } from "@/components/posts/post-card";
-import { CreatePostForm } from "@/components/posts/create-post-form";
+import { CreateContent } from "@/components/posts/create-content";
 import { useData } from "@/context/data-context";
 import { Plus, RefreshCcw } from "lucide-react";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -11,7 +11,6 @@ import { usePushNotifications } from "@/hooks/use-push-notifications";
 
 const HomePage: React.FC = () => {
   const { posts, isLoading, refreshData } = useData();
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'meme' | 'roast' | 'joke' | 'posts'>('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [connectionIssue, setConnectionIssue] = useState(false);
@@ -95,13 +94,7 @@ const HomePage: React.FC = () => {
             <ToggleGroupItem value="posts" aria-label="Filter by posts">Posts</ToggleGroupItem>
           </ToggleGroup>
           
-          <Button 
-            onClick={() => setIsCreatePostOpen(true)} 
-            className="bg-memeGreen hover:bg-memeGreen/90 flex items-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Create Post</span>
-          </Button>
+          <CreateContent />
         </div>
       </div>
       
@@ -113,12 +106,7 @@ const HomePage: React.FC = () => {
         <div className="text-center py-10">
           <h2 className="text-xl mb-2">No posts yet</h2>
           <p className="text-muted-foreground mb-4">Be the first to post!</p>
-          <Button 
-            onClick={() => setIsCreatePostOpen(true)} 
-            className="bg-memeGreen hover:bg-memeGreen/90"
-          >
-            Create Post
-          </Button>
+          <CreateContent />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -130,17 +118,6 @@ const HomePage: React.FC = () => {
         </div>
       )}
       
-      <CreatePostForm 
-        isOpen={isCreatePostOpen} 
-        onClose={() => setIsCreatePostOpen(false)} 
-      />
-      
-      <Button
-        className="fixed right-4 bottom-20 md:bottom-4 rounded-full w-14 h-14 bg-memeGreen hover:bg-memeGreen/90 shadow-lg md:hidden"
-        onClick={() => setIsCreatePostOpen(true)}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
     </div>
   );
 };

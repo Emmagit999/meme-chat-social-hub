@@ -6,16 +6,7 @@ import {
 } from "@/components/ui/dialog";
 import { X, ChevronLeft, ChevronRight, Play, Pause } from "lucide-react";
 import { format } from 'date-fns';
-
-interface Status {
-  id: string;
-  user_id: string;
-  content: string | null;
-  media_url: string | null;
-  media_type: 'image' | 'video' | null;
-  created_at: string;
-  expires_at: string;
-}
+import { Status } from '@/types';
 
 interface StatusViewerProps {
   isOpen: boolean;

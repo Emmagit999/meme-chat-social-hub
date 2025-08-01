@@ -63,3 +63,13 @@ export type Chat = {
   lastMessageDate?: Date;
   unreadCount: number;
 };
+
+export type Status = {
+  id: string;
+  user_id: string;
+  content: string | null;
+  media_url: string | null;
+  media_type: 'image' | 'video' | null;
+  created_at: string;
+  expires_at: string;
+};

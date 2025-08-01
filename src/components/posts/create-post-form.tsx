@@ -28,14 +28,14 @@ import { supabase } from '@/integrations/supabase/client';
 interface CreatePostFormProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultType?: 'meme' | 'roast' | 'joke' | 'posts' | 'status';
+  defaultType?: 'meme' | 'roast' | 'joke' | 'posts';
 }
 
 export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose, defaultType = 'meme' }) => {
   const { user } = useAuth();
   const { addPost } = useData();
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke' | 'posts' | 'status'>(defaultType);
+  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke' | 'posts'>(defaultType);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -179,7 +179,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
           
           <Select 
             value={postType} 
-            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts' | 'status')}
+            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts')}
           >
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Type" />
@@ -189,7 +189,6 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
               <SelectItem value="roast">Roast</SelectItem>
               <SelectItem value="joke">Joke</SelectItem>
               <SelectItem value="posts">Posts</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
           

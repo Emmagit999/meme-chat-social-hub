@@ -76,7 +76,7 @@ export const CreateStatusForm: React.FC<CreateStatusFormProps> = ({ isOpen, onCl
       expiresAt.setHours(expiresAt.getHours() + 24);
 
       const { error } = await supabase
-        .from('status')
+        .from('status' as any)
         .insert({
           user_id: user.id,
           content: content.trim() || null,

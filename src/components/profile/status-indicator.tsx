@@ -2,17 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { StatusViewer } from './status-viewer';
 import { supabase } from '@/integrations/supabase/client';
-import { User } from '@/types';
-
-interface Status {
-  id: string;
-  user_id: string;
-  content: string | null;
-  media_url: string | null;
-  media_type: 'image' | 'video' | null;
-  created_at: string;
-  expires_at: string;
-}
+import { User, Status } from '@/types';
 
 interface StatusIndicatorProps {
   user: User;
@@ -46,14 +36,14 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   const fetchUserStatuses = async () => {
     try {
       const { data: statusData, error } = await supabase
-        .from('status')
+        .from('status' as any)
         .select('*')
         .eq('user_id', user.id)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: true });
 
       if (!error && statusData) {
-        setStatuses(statusData);
+        setStatuses(statusData as unknown as Status[]);
         setHasStatus(statusData.length > 0);
       }
     } catch (error) {
