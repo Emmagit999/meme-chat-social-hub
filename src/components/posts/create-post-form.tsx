@@ -22,22 +22,25 @@ import { ImageIcon, FilmIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { MediaUpload } from "./media-upload";
 import { uploadToStorage } from "@/utils/storage";
+import { MentionInput } from "./mention-input";
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreatePostFormProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultType?: 'meme' | 'roast' | 'joke' | 'posts';
+  defaultType?: 'meme' | 'roast' | 'joke' | 'posts' | 'status';
 }
 
 export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose, defaultType = 'meme' }) => {
   const { user } = useAuth();
   const { addPost } = useData();
   const [content, setContent] = useState('');
-  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke' | 'posts'>(defaultType);
+  const [postType, setPostType] = useState<'meme' | 'roast' | 'joke' | 'posts' | 'status'>(defaultType);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [mentions, setMentions] = useState<string[]>([]);
 
   const handleImageSelect = async (file: File) => {
     setUploading(true);
@@ -69,6 +72,33 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
     setUploading(false);
   };
 
+  const sendMentionNotifications = async (mentionedUsernames: string[]) => {
+    try {
+      for (const username of mentionedUsernames) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .eq('username', username)
+          .single();
+
+        if (profile) {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: profile.id,
+              from_user_id: user.id,
+              type: 'mention',
+              content: `${user.username} mentioned you in a post`,
+              from_username: user.username,
+              avatar: user.avatar
+            });
+        }
+      }
+    } catch (error) {
+      console.error('Error sending mention notifications:', error);
+    }
+  };
+
   const handlePostSubmit = async () => {
     if (!user) return;
     
@@ -81,6 +111,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
     toast.loading("Creating your post...", { id: "creating-post" });
     
     try {
+      // Create the post
       await addPost({
         userId: user.id,
         username: user.username,
@@ -90,6 +121,11 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
         video: mediaType === 'video' ? mediaPreview : undefined,
         type: postType
       });
+
+      // Send mention notifications
+      if (mentions.length > 0) {
+        await sendMentionNotifications(mentions);
+      }
       
       toast.success("Post created successfully!", { id: "creating-post" });
       resetForm();
@@ -111,6 +147,12 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
     setPostType(defaultType || 'meme');
     setMediaPreview(null);
     setMediaType(null);
+    setMentions([]);
+  };
+
+  const handleContentChange = (newContent: string, newMentions: string[]) => {
+    setContent(newContent);
+    setMentions(newMentions);
   };
 
   return (
@@ -124,11 +166,11 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
         </DialogHeader>
         
         <div className="grid gap-4 py-4">
-          <Textarea
-            placeholder="What's on your mind?"
+          <MentionInput
             value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="min-h-[120px] border-yellow-400"
+            onChange={handleContentChange}
+            placeholder="What's on your mind? Type @ to mention someone..."
+            className="border-yellow-400"
           />
           <MediaUpload 
             onImageSelect={handleImageSelect} 
@@ -137,7 +179,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
           
           <Select 
             value={postType} 
-            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts')}
+            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts' | 'status')}
           >
             <SelectTrigger className="w-[120px]">
               <SelectValue placeholder="Type" />
@@ -147,6 +189,7 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
               <SelectItem value="roast">Roast</SelectItem>
               <SelectItem value="joke">Joke</SelectItem>
               <SelectItem value="posts">Posts</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
             </SelectContent>
           </Select>
           
