@@ -1,10 +1,10 @@
 import React from 'react';
-import { usePresence } from '@/hooks/use-presence';
+import { useOptimizedPresence } from '@/hooks/use-optimized-presence';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { OnlineIndicator } from '@/components/ui/online-indicator';
 
 export const OnlineUsersList: React.FC = () => {
-  const { onlineUsers } = usePresence();
+  const { onlineUsers } = useOptimizedPresence();
 
   if (onlineUsers.length === 0) {
     return (

@@ -27,9 +27,13 @@ import AboutPage from "@/pages/about-page";
 import SettingsPage from "@/pages/settings-page";
 import OpaySupport from "@/pages/opay-support";
 import SupportPage from "@/pages/support-page";
+import AdminDashboard from "@/pages/admin-dashboard";
 import { usePalRequests } from "@/hooks/use-pal-requests";
 import { useRealTimeNotifications } from "@/hooks/use-real-time-notifications";
 import { useRealTimeSync } from "@/hooks/use-real-time-sync";
+import { useOptimizedPresence } from "@/hooks/use-optimized-presence";
+import { useNetworkOptimizer } from "@/hooks/use-network-optimizer";
+import { useBackgroundSync } from "@/hooks/use-background-sync";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -52,8 +56,13 @@ const AppRoutes = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const isMobile = useIsMobile();
   const { requestCount } = usePalRequests();
+  
+  // Initialize optimized networking features
   useRealTimeNotifications();
   useRealTimeSync();
+  useOptimizedPresence();
+  useNetworkOptimizer();
+  useBackgroundSync();
   
   if (isLoading) {
     return <SplashScreen />;
@@ -135,6 +144,10 @@ const AppRoutes = () => {
           <Route 
             path="/opay-support" 
             element={<OpaySupport />} 
+          />
+          <Route 
+            path="/admin" 
+            element={<AuthCheck><AdminDashboard /></AuthCheck>} 
           />
           <Route path="*" element={<NotFound />} />
         </Routes>

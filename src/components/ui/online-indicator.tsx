@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePresence } from '@/hooks/use-presence';
+import { useOptimizedPresence } from '@/hooks/use-optimized-presence';
 import { cn } from '@/lib/utils';
 
 interface OnlineIndicatorProps {
@@ -13,7 +13,7 @@ export const OnlineIndicator: React.FC<OnlineIndicatorProps> = ({
   className,
   size = 'sm' 
 }) => {
-  const { isUserOnline } = usePresence();
+  const { isUserOnline } = useOptimizedPresence();
   const online = isUserOnline(userId);
   
   if (!online) return null;

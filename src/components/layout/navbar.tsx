@@ -9,6 +9,7 @@ import NotificationBadge from '../ui/notification-badge';
 import { useNotifications } from '@/hooks/use-notifications';
 import { useMessaging } from '@/hooks/use-messaging';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NetworkStatus } from "@/components/ui/network-status";
 
 export const Navbar = () => {
   const navigate = useNavigate();
@@ -84,13 +85,14 @@ export const Navbar = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-auto bg-gray-900 border-t md:border-t-0 md:border-b border-gray-800 z-10">
       <div className="container flex items-center justify-between py-2 md:py-3">
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-4">
           <button 
             onClick={() => navigate('/home')}
             className="text-xl font-bold text-yellow-500 flex items-center"
           >
             MemChat
           </button>
+          <NetworkStatus />
         </div>
 
         <div className={`flex ${isMobile ? 'w-full justify-around' : 'gap-1'}`}>
