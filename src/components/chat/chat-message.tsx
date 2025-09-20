@@ -169,11 +169,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </Avatar>
       )}
       <div
-        className={`max-w-[70%] rounded-lg p-3 relative ${
+        className={`max-w-[70%] rounded-2xl p-4 relative message-animate ${
           isSentByMe
-            ? 'bg-black text-yellow-500 border border-yellow-500/30'
-            : 'bg-gray-900 text-yellow-400 border border-gray-700'
-        } ${isPressing ? 'opacity-70' : ''}`}
+            ? 'chat-bubble-sent text-white'
+            : 'chat-bubble-received text-foreground'
+        } ${isPressing ? 'opacity-70' : ''} transition-all duration-300 hover:scale-[1.02]`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}

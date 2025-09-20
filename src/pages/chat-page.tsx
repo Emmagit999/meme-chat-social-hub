@@ -18,17 +18,24 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OnlineUsersList } from "@/components/chat/online-users-list";
 import { OnlineIndicator } from "@/components/ui/online-indicator";
+import { NotificationBubble } from "@/components/ui/notification-bubble";
+import { TypingIndicator } from "@/components/chat/typing-indicator";
 
 const EmptyState = () => (
   <div className="h-full flex items-center justify-center flex-col p-4 text-center">
-    <div className="mb-4 p-4 rounded-full bg-gray-800">
-      <MessageCircle className="h-10 w-10 text-yellow-500" />
+    <div className="mb-6 p-6 rounded-full glow-pulse" 
+         style={{ background: 'var(--gradient-primary)' }}>
+      <MessageCircle className="h-12 w-12 text-white" />
     </div>
-    <h3 className="text-xl font-medium mb-2 text-yellow-500">Your messages</h3>
-    <p className="mb-4 text-gray-400">Send private messages to pals and connect with new people</p>
+    <h3 className="text-2xl font-bold mb-3 text-primary">Your messages</h3>
+    <p className="mb-6 text-muted-foreground max-w-sm">
+      Send private messages to pals and connect with new people in our vibrant community
+    </p>
     <Button 
       onClick={() => window.location.href = '/merge'}
-      className="bg-yellow-500 hover:bg-yellow-600 text-black"
+      className="bg-gradient-to-r from-primary to-accent text-white px-8 py-3 rounded-full
+                 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl
+                 border-0 font-semibold"
     >
       Start a conversation
     </Button>
@@ -234,21 +241,27 @@ const ChatPage: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       <div className="container py-16 pb-24 md:pb-16 max-w-6xl">
-        <div className="flex h-[calc(100vh-8rem)] bg-card rounded-lg border border-border overflow-hidden">
+        <div className="flex h-[calc(100vh-8rem)] bg-card rounded-2xl border border-border 
+                       overflow-hidden shadow-2xl relative"
+             style={{ boxShadow: 'var(--shadow-bubble)' }}>
           {/* Chat List Sidebar */}
-          <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-96 lg:w-80 border-r border-border flex-col`}>
-            <div className="p-3 border-b border-border">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-lg font-semibold">Messages</h2>
+          <div className={`${isMobile && activeChat ? 'hidden' : 'flex'} w-full md:w-96 lg:w-80 border-r border-border flex-col bg-muted/30`}>
+            <div className="p-4 border-b border-border chat-header-gradient">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xl font-bold text-white">Messages</h2>
+                <div className="w-3 h-3 chat-online-indicator rounded-full"></div>
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/70 h-5 w-5" />
                 <input
                   type="text"
                   placeholder="Search conversations..."
-                  className="w-full pl-10 pr-4 py-1.5 text-sm border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full pl-12 pr-4 py-3 text-sm bg-white/10 backdrop-blur-sm 
+                           border border-white/20 rounded-xl text-white placeholder:text-white/70
+                           focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/20
+                           transition-all duration-300"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -274,39 +287,49 @@ const ChatPage: React.FC = () => {
                   {filteredChats.map(chat => {
                     const otherUser = getOtherUser(chat.id);
                     return (
-                      <button
-                        key={chat.id}
-                        className={`w-full p-3 flex items-center gap-3 hover:bg-gray-800 transition-colors border-b border-gray-800 ${
-                          activeChat === chat.id ? 'bg-gray-800' : ''
-                        }`}
-                        onClick={() => handleChatSelect(chat.id)}
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={otherUser.avatar} />
-                          <AvatarFallback className="bg-gray-700 text-yellow-500">
-                            {otherUser.name.substring(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 text-left">
-                          <div className="flex justify-between">
-                            <p className="font-medium text-yellow-500">{otherUser.name}</p>
-                            {chat.lastMessageDate && (
-                              <span className="text-xs text-gray-400">
-                                {format(new Date(chat.lastMessageDate), 'h:mm a')}
-                              </span>
-                            )}
+                        <button
+                          key={chat.id}
+                          className={`w-full p-4 flex items-center gap-3 hover:bg-primary/10 
+                                    transition-all duration-300 border-b border-border/50 relative
+                                    ${activeChat === chat.id ? 'bg-primary/20 border-l-4 border-l-primary' : ''}
+                                    hover:scale-[1.02] hover:shadow-md group`}
+                          onClick={() => handleChatSelect(chat.id)}
+                        >
+                          <div className="relative">
+                            <Avatar className="h-12 w-12 ring-2 ring-primary/30 group-hover:ring-primary/60 transition-all">
+                              <AvatarImage src={otherUser.avatar} />
+                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold">
+                                {otherUser.name.substring(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            {/* Online indicator */}
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 chat-online-indicator 
+                                         rounded-full border-2 border-card"></div>
                           </div>
-                           {chat.lastMessage && !chat.lastMessage.includes('[deleted]') && (
-                             <p className="text-sm text-muted-foreground truncate">
-                               {chat.lastMessage}
-                             </p>
-                           )}
-                        </div>
-                        {chat.unreadCount > 0 && (
-                          <div className="bg-yellow-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                            {chat.unreadCount}
+                          <div className="flex-1 text-left min-w-0">
+                            <div className="flex justify-between items-center mb-1">
+                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                                {otherUser.name}
+                              </p>
+                              {chat.lastMessageDate && (
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(chat.lastMessageDate), 'h:mm a')}
+                                </span>
+                              )}
+                            </div>
+                             {chat.lastMessage && !chat.lastMessage.includes('[deleted]') && (
+                               <p className="text-sm text-muted-foreground truncate group-hover:text-foreground/80 transition-colors">
+                                 {chat.lastMessage}
+                               </p>
+                             )}
                           </div>
-                        )}
+                          {chat.unreadCount > 0 && (
+                            <div className="bg-gradient-to-r from-accent to-primary text-white text-xs 
+                                         rounded-full h-6 w-6 flex items-center justify-center font-bold
+                                         animate-pulse shadow-lg">
+                              {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                            </div>
+                          )}
                       </button>
                     );
                   })}
@@ -314,12 +337,14 @@ const ChatPage: React.FC = () => {
               )}
             </ScrollArea>
             
-            <div className="p-3 border-t border-gray-700 bg-black">
+            <div className="p-4 border-t border-border">
               <Button 
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-black flex items-center gap-2"
+                className="w-full bg-gradient-to-r from-primary to-accent text-white flex items-center gap-2
+                         hover:scale-105 transition-all duration-300 rounded-xl py-3 font-semibold
+                         shadow-lg hover:shadow-xl border-0"
                 onClick={() => navigate('/pals')}
               >
-                <Users className="h-4 w-4" />
+                <Users className="h-5 w-5" />
                 My Pals
               </Button>
             </div>
@@ -401,6 +426,9 @@ const ChatPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Floating Notification Bubbles */}
+      <NotificationBubble />
     </div>
   );
 };

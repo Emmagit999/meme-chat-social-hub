@@ -91,7 +91,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const isNearLimit = characterCount > MAX_CHARACTERS * 0.9;
 
   return (
-    <div className="p-3 border-t border-gray-700 bg-black sticky bottom-0 z-10">
+    <div className="p-4 border-t border-border sticky bottom-0 z-10 
+                   bg-gradient-to-r from-muted/50 to-muted/30 backdrop-blur-sm">
       {!isConnected && (
         <div className="flex items-center justify-center mb-2 bg-red-900/20 text-red-500 p-2 rounded-md">
           <AlertCircle className="h-4 w-4 mr-2" />
@@ -102,8 +103,10 @@ export const MessageInput: React.FC<MessageInputProps> = ({
       <form onSubmit={handleSendMessage} className="flex gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" variant="ghost" size="icon" className="text-yellow-500 hover:text-yellow-400 hover:bg-gray-900">
-              <Smile className="h-5 w-5" />
+            <Button type="button" variant="ghost" size="icon" 
+                   className="text-primary hover:text-accent hover:bg-primary/10 rounded-full
+                            transition-all duration-300 hover:scale-110">
+              <Smile className="h-6 w-6" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" align="start">
@@ -125,13 +128,16 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         <div className="flex-1 relative">
           <Input
             ref={inputRef}
-            placeholder="Send a message"
+            placeholder="Type your message..."
             value={messageText}
             onChange={handleInputChange}
-            className={`flex-1 border-gray-700 bg-gray-900 text-yellow-500 rounded-full placeholder-yellow-500/50 pr-16 ${
-              isNearLimit ? 'border-yellow-500' : ''
+            className={`flex-1 bg-gradient-to-r from-muted to-muted/80 border-border/50 
+                       text-foreground rounded-2xl placeholder:text-muted-foreground/70 pr-16
+                       focus:ring-2 focus:ring-primary/50 focus:border-primary/50
+                       transition-all duration-300 hover:border-primary/30 py-3 ${
+              isNearLimit ? 'border-primary ring-2 ring-primary/30' : ''
             } ${
-              isOverLimit ? 'border-red-500' : ''
+              isOverLimit ? 'border-destructive ring-2 ring-destructive/30' : ''
             }`}
             autoFocus
             disabled={!isConnected || isSending || isSubmitting}
@@ -147,7 +153,9 @@ export const MessageInput: React.FC<MessageInputProps> = ({
         
         <Button 
           type="submit" 
-          className="bg-yellow-500 hover:bg-yellow-600 text-black rounded-full h-10 w-10 p-0 flex items-center justify-center"
+          className="bg-gradient-to-r from-primary to-accent text-white rounded-full h-12 w-12 p-0 
+                   flex items-center justify-center hover:scale-110 transition-all duration-300
+                   disabled:opacity-50 disabled:hover:scale-100 shadow-lg glow-pulse border-0"
           disabled={!messageText.trim() || !isConnected || isSending || isSubmitting}
         >
           {isSending || isSubmitting ? (

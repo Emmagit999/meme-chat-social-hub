@@ -4,36 +4,56 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 7%;
+:root {
+    --background: 0 0% 4%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 10%;
+    --card: 220 15% 8%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 0 0% 10%;
+    --popover: 220 15% 8%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 142 100% 39%;
+    --primary: 280 100% 60%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 0 0% 20%;
+    --secondary: 260 80% 45%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 0 0% 15%;
+    --muted: 220 15% 12%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 140 60% 39%;
+    --accent: 320 100% 55%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 142 100% 39%;
+    --border: 220 15% 15%;
+    --input: 220 15% 12%;
+    --ring: 280 100% 60%;
 
-    --radius: 0.75rem;
+    /* Chat specific colors */
+    --chat-primary: 280 100% 60%;
+    --chat-secondary: 260 80% 45%;
+    --chat-accent: 320 100% 55%;
+    --chat-bubble-sent: 280 100% 60%;
+    --chat-bubble-received: 220 15% 15%;
+    --chat-online: 120 100% 50%;
+    --chat-typing: 45 100% 60%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+    --gradient-chat: linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 55%));
+    --gradient-message: linear-gradient(135deg, hsl(260 80% 45%), hsl(280 100% 60%));
+    --gradient-bubble: linear-gradient(135deg, hsl(320 100% 55%), hsl(280 100% 60%));
+
+    /* Shadows */
+    --shadow-glow: 0 0 20px hsl(var(--primary) / 0.3);
+    --shadow-bubble: 0 8px 32px hsl(var(--primary) / 0.2);
+    --shadow-chat: 0 4px 20px hsl(var(--primary) / 0.15);
+
+    --radius: 1rem;
   }
 }
 
@@ -72,4 +92,71 @@
 
 .hover-scale {
   @apply transition-transform duration-200 hover:scale-105;
+}
+
+/* Chat specific styles */
+.chat-bubble-sent {
+  background: var(--gradient-message);
+  box-shadow: var(--shadow-chat);
+  @apply border-0;
+}
+
+.chat-bubble-received {
+  @apply bg-muted border border-border;
+  box-shadow: var(--shadow-chat);
+}
+
+.chat-input {
+  background: var(--gradient-primary);
+  @apply border-0 text-white placeholder:text-white/70;
+}
+
+.chat-online-indicator {
+  background: hsl(var(--chat-online));
+  box-shadow: 0 0 8px hsl(var(--chat-online) / 0.6);
+  @apply animate-pulse;
+}
+
+.notification-bubble {
+  background: var(--gradient-bubble);
+  box-shadow: var(--shadow-bubble);
+  @apply animate-bounce;
+}
+
+.chat-header-gradient {
+  background: var(--gradient-chat);
+}
+
+/* Animations */
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes bubble-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: var(--shadow-glow); }
+  50% { box-shadow: 0 0 30px hsl(var(--primary) / 0.5); }
+}
+
+.message-animate {
+  animation: message-in 0.3s ease-out;
+}
+
+.bubble-float {
+  animation: bubble-float 3s ease-in-out infinite;
+}
+
+.glow-pulse {
+  animation: glow-pulse 2s ease-in-out infinite;
 }
