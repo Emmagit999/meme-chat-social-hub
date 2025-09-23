@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +13,9 @@ interface ChatMessageProps {
   otherUserAvatar?: string;
   onDeleteMessage?: (messageId: string) => Promise<boolean>;
   onEditMessage?: (messageId: string, content: string) => Promise<boolean>;
+  isDeleting?: boolean;
+  isOptimistic?: boolean;
+  status?: 'sending' | 'sent' | 'failed';
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({ 
@@ -21,14 +23,25 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   currentUser,
   otherUserAvatar = "/assets/avatar1.jpg",
   onDeleteMessage,
-  onEditMessage
+  onEditMessage,
+  isDeleting = false,
+  isOptimistic = false,
+  status = 'sent'
 }) => {
   const isSentByMe = message.senderId === currentUser.id;
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLocalDeleting, setIsLocalDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  const isDeletingMessage = message.content === '[deleted]';
+  const showAsDeleting = isDeleting || isLocalDeleting;
+  
+  // Handle touch events for mobile
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isPressing, setIsPressing] = useState(false);
   
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -44,89 +57,78 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     if (!confirmed) return;
     
     try {
-      setIsDeleting(true);
+      setIsLocalDeleting(true);
       setIsSubmitting(true);
       const success = await onDeleteMessage(message.id);
       if (success) {
-        toast.success("Message deleted");
-      } else {
-        console.error("Failed to delete message");
-        toast.error("Failed to delete message");
-        setIsDeleting(false);
+        toast.success('Message deleted');
       }
     } catch (error) {
-      console.error("Error deleting message:", error);
-      toast.error("Failed to delete message");
-      setIsDeleting(false);
+      console.error('Error deleting message:', error);
+      toast.error('Failed to delete message');
     } finally {
+      setIsLocalDeleting(false);
       setIsSubmitting(false);
     }
   };
-  
+
   const handleEdit = () => {
-    setEditContent(message.content);
+    if (isSubmitting) return;
     setIsEditing(true);
   };
-  
+
   const handleSaveEdit = async () => {
-    if (!onEditMessage || isSubmitting || editContent.trim() === '') return;
+    if (!onEditMessage || !editContent.trim() || editContent === message.content || isSubmitting) return;
     
     try {
       setIsSubmitting(true);
       const success = await onEditMessage(message.id, editContent);
       if (success) {
         setIsEditing(false);
-        toast.success("Message updated");
-      } else {
-        console.error("Failed to edit message");
-        toast.error("Failed to update message");
+        toast.success('Message updated');
       }
     } catch (error) {
-      console.error("Error editing message:", error);
-      toast.error("Failed to update message");
+      console.error('Error editing message:', error);
+      toast.error('Failed to update message');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSaveEdit();
-    }
-    if (e.key === 'Escape') {
+    } else if (e.key === 'Escape') {
       setIsEditing(false);
       setEditContent(message.content);
     }
   };
 
-  // Handle long press for mobile (touch) devices
-  const pressTimer = useRef<NodeJS.Timeout | null>(null);
-  const [isPressing, setIsPressing] = useState(false);
-  
+  // Handle touch events for long press
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isSentByMe) return; // Only allow editing of own messages
-    
+    setTouchStart(Date.now());
     setIsPressing(true);
-    pressTimer.current = setTimeout(() => {
-      // Show context menu on long press
-      e.preventDefault();
-      setIsPressing(false);
-    }, 500);
   };
-  
+
   const handleTouchEnd = () => {
-    if (pressTimer.current) {
-      clearTimeout(pressTimer.current);
-      pressTimer.current = null;
+    if (touchStart) {
+      const touchDuration = Date.now() - touchStart;
+      if (touchDuration > 500) {
+        // Long press detected - could trigger context menu
+        console.log('Long press detected');
+      }
     }
+    setTouchStart(null);
     setIsPressing(false);
   };
 
-  // Show deleted message placeholder
-  if (message.content === '[deleted]' || message.content === '') {
+  // Handle deleted messages
+  if (isDeletingMessage && !showAsDeleting) {
     return (
-      <div className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'} mb-3`}>
+      <div
+        className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'} mb-3`}
+      >
         {!isSentByMe && (
           <Avatar className="h-8 w-8 mr-2 self-end">
             <AvatarImage src={otherUserAvatar} />
@@ -136,11 +138,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </Avatar>
         )}
         <div
-          className={`max-w-[70%] rounded-lg p-3 border-2 border-dashed border-gray-600 bg-gray-800/50`}
+          className={`max-w-[70%] rounded-2xl p-4 border-2 border-dashed border-muted-foreground/30 ${
+            isSentByMe ? 'bg-muted/20' : 'bg-muted/10'
+          }`}
         >
-          <p className="text-gray-500 italic text-sm">This message was deleted</p>
-          <div className="text-xs mt-1 text-gray-500">
-            {format(new Date(message.createdAt), 'h:mm a')}
+          <div className="flex items-center">
+            <p className="italic text-muted-foreground/70 text-sm">This message was deleted</p>
           </div>
         </div>
         {isSentByMe && (
@@ -173,12 +176,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           isSentByMe
             ? 'chat-bubble-sent text-white'
             : 'chat-bubble-received text-foreground'
-        } ${isPressing ? 'opacity-70' : ''} transition-all duration-300 hover:scale-[1.02]`}
+        } ${isPressing ? 'opacity-70' : ''} ${
+          isOptimistic ? 'opacity-80' : ''
+        } transition-all duration-300 hover:scale-[1.02]`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
       >
-        {isSentByMe && !isEditing && !isDeleting && (
+        {isSentByMe && !isEditing && !showAsDeleting && !isDeletingMessage && (
           <div className="absolute top-2 right-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -208,7 +213,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </div>
         )}
         
-        {isDeleting ? (
+        {/* Show status indicators for optimistic messages */}
+        {isOptimistic && status === 'sending' && (
+          <div className="flex items-center gap-1 mb-2">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+            <span className="text-xs text-yellow-500">Sending...</span>
+          </div>
+        )}
+        
+        {isOptimistic && status === 'failed' && (
+          <div className="flex items-center gap-1 mb-2">
+            <div className="w-2 h-2 bg-red-500 rounded-full" />
+            <span className="text-xs text-red-500">Failed to send</span>
+          </div>
+        )}
+        
+        {showAsDeleting ? (
           <p className="italic text-gray-400">Deleting message...</p>
         ) : isEditing && isSentByMe ? (
           <div className="flex flex-col">
@@ -251,7 +271,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </div>
         )}
         
-        {!isEditing && !isDeleting && (
+        {!isEditing && !showAsDeleting && !isDeletingMessage && (
           <div
             className={`text-xs mt-1 ${
               isSentByMe
@@ -260,6 +280,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             }`}
           >
             {format(new Date(message.createdAt), 'h:mm a')}
+            {isOptimistic && status === 'sent' && (
+              <span className="ml-1 text-green-500">✓</span>
+            )}
           </div>
         )}
       </div>

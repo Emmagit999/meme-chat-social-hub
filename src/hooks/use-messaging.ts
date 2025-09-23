@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/auth-context";
 import { User, Message, Chat } from "@/types";
 import { useChat } from "@/hooks/use-chat";
+import { useOptimisticMessaging } from "@/hooks/use-optimistic-messaging";
 import { v4 as uuidv4 } from 'uuid';
+import { toast } from "sonner";
 
 export const useMessaging = () => {
   const { chats, messages, activeChat, setActiveChat, sendMessage: chatSendMessage, startNewChat, getSuggestedUsers, getUserById, registerUser, getFriends } = useChat();
@@ -13,7 +15,15 @@ export const useMessaging = () => {
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [lastError, setLastError] = useState<Error | null>(null);
+  const [deletingMessages, setDeletingMessages] = useState<Set<string>>(new Set());
   const { user } = useAuth();
+  const { 
+    optimisticMessages, 
+    addOptimisticMessage, 
+    updateMessageStatus, 
+    removeOptimisticMessage,
+    removeOptimisticMessageByContent 
+  } = useOptimisticMessaging();
 
   // Calculate unread messages count
   useEffect(() => {
@@ -69,23 +79,28 @@ export const useMessaging = () => {
     };
   }, [user, getFriends]);
 
-  // Enhanced message sending with better error handling and prevention of double sending
+  // Enhanced message sending with optimistic updates like WhatsApp
   const sendMessage = async (content: string) => {
     if (!content.trim() || !activeChat || isSending) return null;
+    
+    const chat = chats.find(c => c.id === activeChat);
+    if (!chat || !user) {
+      toast.error("Chat or user not found");
+      return null;
+    }
+    
+    const receiverId = chat.participants.find(id => id !== user.id);
+    if (!receiverId) {
+      toast.error("Receiver not found");
+      return null;
+    }
+
+    // Add optimistic message immediately (like WhatsApp)
+    const optimisticId = addOptimisticMessage(content, user.id, receiverId);
     
     try {
       setIsSending(true);
       setLastError(null);
-      
-      const chat = chats.find(c => c.id === activeChat);
-      if (!chat || !user) {
-        throw new Error("Chat or user not found");
-      }
-      
-      const receiverId = chat.participants.find(id => id !== user.id);
-      if (!receiverId) {
-        throw new Error("Receiver not found");
-      }
       
       const messageId = uuidv4();
       const messageData = {
@@ -96,7 +111,7 @@ export const useMessaging = () => {
         created_at: new Date().toISOString()
       };
       
-      // Use a transaction-like approach to prevent duplicate sends
+      // Send to database
       const { data, error } = await supabase
         .from('messages')
         .insert(messageData)
@@ -113,23 +128,39 @@ export const useMessaging = () => {
           last_message_date: new Date().toISOString()
         })
         .eq('id', activeChat);
+
+      // Remove optimistic message and mark as sent
+      updateMessageStatus(optimisticId, 'sent');
+      setTimeout(() => removeOptimisticMessage(optimisticId), 1000);
+      
+      // Refresh messages to get real data
+      if (getFriends) {
+        setTimeout(() => getFriends(), 500);
+      }
       
       return data;
     } catch (error) {
       console.error('Error sending message:', error);
+      updateMessageStatus(optimisticId, 'failed');
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
+      toast.error("Failed to send message");
+      
+      // Remove failed optimistic message after a delay
+      setTimeout(() => removeOptimisticMessage(optimisticId), 3000);
       throw error;
     } finally {
       setIsSending(false);
     }
   };
 
-  // Delete a message with proper error handling and feedback
+  // Delete a message with immediate UI feedback like WhatsApp
   const deleteMessage = async (messageId: string): Promise<boolean> => {
-    if (isSending) return false; // Prevent operation if already sending
+    if (deletingMessages.has(messageId)) return false; // Prevent duplicate deletes
     
     try {
-      setIsSending(true);
+      // Immediately mark as deleting for instant UI feedback
+      setDeletingMessages(prev => new Set(prev).add(messageId));
+      
       console.log("Attempting to delete message with ID:", messageId);
       
       const { error } = await supabase
@@ -146,7 +177,7 @@ export const useMessaging = () => {
       
       console.log("Message successfully deleted");
       
-      // Update UI - trigger a refresh via getFriends to reload chats and messages
+      // Immediate refresh for both sender and receiver
       if (getFriends) {
         await getFriends();
       }
@@ -154,10 +185,16 @@ export const useMessaging = () => {
       return true;
     } catch (error) {
       console.error('Error deleting message:', error);
+      toast.error("Failed to delete message");
       setLastError(error instanceof Error ? error : new Error("Failed to delete message"));
       return false;
     } finally {
-      setIsSending(false);
+      // Remove from deleting set
+      setDeletingMessages(prev => {
+        const next = new Set(prev);
+        next.delete(messageId);
+        return next;
+      });
     }
   };
 
@@ -264,6 +301,8 @@ export const useMessaging = () => {
     reconnect,
     unreadMessages,
     isLoading,
-    lastError
+    lastError,
+    optimisticMessages,
+    deletingMessages
   };
 };

@@ -73,7 +73,9 @@ const ChatPage: React.FC = () => {
     getUserById,
     getSuggestedUsers,
     getFriends,
-    lastError
+    lastError,
+    optimisticMessages,
+    deletingMessages
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -391,21 +393,43 @@ const ChatPage: React.FC = () => {
                   <div className="h-full flex items-center justify-center text-gray-400">
                     No messages yet. Say hello!
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {messages.map(message => (
-                      <ChatMessage
-                        key={message.id}
-                        message={message}
-                        currentUser={currentUser}
-                        otherUserAvatar={getOtherUserAvatar(activeChat)}
-                        onDeleteMessage={handleDeleteMessage}
-                        onEditMessage={handleEditMessage}
-                      />
-                    ))}
-                    <div ref={messageEndRef} />
-                  </div>
-                )}
+                 ) : (
+                   <div className="space-y-4">
+                     {/* Real messages from database */}
+                     {messages.map(message => (
+                       <ChatMessage
+                         key={message.id}
+                         message={message}
+                         currentUser={currentUser}
+                         otherUserAvatar={getOtherUserAvatar(activeChat)}
+                         onDeleteMessage={handleDeleteMessage}
+                         onEditMessage={handleEditMessage}
+                         isDeleting={deletingMessages.has(message.id)}
+                       />
+                     ))}
+                     
+                     {/* Optimistic messages for immediate feedback */}
+                     {optimisticMessages.map(optMessage => (
+                       <ChatMessage
+                         key={`optimistic-${optMessage.id}`}
+                         message={{
+                           id: optMessage.id,
+                           content: optMessage.content,
+                           senderId: optMessage.sender_id,
+                           receiverId: optMessage.receiver_id,
+                           createdAt: new Date(optMessage.created_at),
+                           edited: false,
+                           read: false
+                         }}
+                         currentUser={currentUser}
+                         otherUserAvatar={getOtherUserAvatar(activeChat)}
+                         isOptimistic={true}
+                         status={optMessage.status}
+                       />
+                     ))}
+                     <div ref={messageEndRef} />
+                   </div>
+                 )}
               </ScrollArea>
               <div className="border-t border-border">
                 <MessageInput 

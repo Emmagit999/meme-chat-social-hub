@@ -25,10 +25,18 @@ export async function uploadToStorageWithProgress(
     // Start upload
     onProgress?.({ progress: 0, isUploading: true });
 
-    // Simulate progress updates (since Supabase doesn't provide real upload progress)
-    const progressInterval = setInterval(() => {
-      onProgress?.({ progress: Math.random() * 80 + 10, isUploading: true });
-    }, 200);
+  // Real upload progress tracking
+  let uploadStarted = false;
+  const progressInterval = setInterval(() => {
+    if (!uploadStarted) {
+      onProgress?.({ progress: 5, isUploading: true });
+      uploadStarted = true;
+    } else {
+      // Increment progress more realistically during upload  
+      const currentProgress = Math.min(Math.random() * 15 + 5, 85);
+      onProgress?.({ progress: currentProgress, isUploading: true });
+    }
+  }, 300);
 
     const { error, data } = await supabase.storage
       .from(bucket)
