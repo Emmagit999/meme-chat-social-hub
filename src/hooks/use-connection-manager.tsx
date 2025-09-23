@@ -56,7 +56,7 @@ export const useConnectionManager = () => {
       setConnectionState(prev => ({
         ...prev,
         isConnected: false,
-        connectionQuality: 'offline',
+        connectionQuality: navigator.onLine ? 'poor' : 'offline',
         lastPing: Date.now()
       }));
       

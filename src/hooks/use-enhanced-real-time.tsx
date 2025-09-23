@@ -3,13 +3,16 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/auth-context';
 
+// Singleton guard to avoid duplicate subscriptions
+let enhancedRealtimeInitialized = false;
+
 export const useEnhancedRealTime = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-
   useEffect(() => {
     if (!user) return;
-
+    if (enhancedRealtimeInitialized) return;
+    enhancedRealtimeInitialized = true;
     console.log('Setting up enhanced real-time sync for user:', user.id);
 
     // Enhanced posts real-time with immediate UI updates
@@ -58,6 +61,7 @@ export const useEnhancedRealTime = () => {
       supabase.removeChannel(postsChannel);
       supabase.removeChannel(likesChannel);
       supabase.removeChannel(commentsChannel);
+      enhancedRealtimeInitialized = false;
     };
   }, [user, queryClient]);
 };

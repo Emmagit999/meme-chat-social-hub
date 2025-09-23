@@ -5,6 +5,9 @@ import { useChat } from '@/hooks/use-chat';
 import { usePosts } from '@/hooks/use-posts';
 import { useQueryClient } from '@tanstack/react-query';
 
+// Guard to avoid duplicate subscriptions from multiple mounts
+let realTimeSyncInitialized = false;
+
 export const useRealTimeSync = () => {
   const { user } = useAuth();
   const { getFriends } = useChat();
@@ -30,7 +33,8 @@ export const useRealTimeSync = () => {
 
   useEffect(() => {
     if (!user) return;
-
+    if (realTimeSyncInitialized) return;
+    realTimeSyncInitialized = true;
     console.log('Setting up enhanced real-time sync for user:', user.id);
 
     // Set up comprehensive real-time sync for all tables
@@ -64,10 +68,21 @@ export const useRealTimeSync = () => {
         event: '*', 
         schema: 'public', 
         table: 'messages',
-        filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})`
+        filter: `sender_id=eq.${user.id}`
       }, (payload) => {
         console.log('Messages change detected:', payload);
-        // Force immediate refresh of chats and messages
+        if (getFriends) {
+          getFriends();
+        }
+        queryClient.invalidateQueries({ queryKey: ['messages'] });
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`
+      }, (payload) => {
+        console.log('Messages change detected:', payload);
         if (getFriends) {
           getFriends();
         }

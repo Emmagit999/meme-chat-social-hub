@@ -112,11 +112,22 @@ export const useNetworkOptimizer = (): NetworkOptimizer => {
         invalidate('posts');
       })
       // Messages changes for this user
+      // Messages changes for this user (split filters; Realtime doesn't support OR)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'messages',
-        filter: `or(sender_id.eq.${user.id},receiver_id.eq.${user.id})`
+        filter: `sender_id=eq.${user.id}`
+      }, (payload) => {
+        queryClient.invalidateQueries({ queryKey: ['messages'] });
+        queryClient.invalidateQueries({ queryKey: ['chats'] });
+        invalidate('messages');
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${user.id}`
       }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['messages'] });
         queryClient.invalidateQueries({ queryKey: ['chats'] });
@@ -127,7 +138,7 @@ export const useNetworkOptimizer = (): NetworkOptimizer => {
         event: '*',
         schema: 'public',
         table: 'notifications',
-        filter: `user_id.eq.${user.id}`
+        filter: `user_id=eq.${user.id}`
       }, (payload) => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
         invalidate('notifications');
