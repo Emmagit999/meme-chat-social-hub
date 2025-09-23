@@ -155,8 +155,17 @@
 
 .bubble-float {
   animation: bubble-float 3s ease-in-out infinite;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
 .glow-pulse {
   animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.upload-progress-container {
+  transition: all 0.3s ease;
 }

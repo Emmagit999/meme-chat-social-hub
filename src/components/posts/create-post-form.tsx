@@ -21,9 +21,11 @@ import { useData } from "@/context/data-context";
 import { ImageIcon, FilmIcon, X } from "lucide-react";
 import { toast } from "sonner";
 import { MediaUpload } from "./media-upload";
-import { uploadToStorage } from "@/utils/storage";
+import { uploadToStorageWithProgress, validateFile, UploadProgress } from "@/utils/enhanced-storage";
 import { MentionInput } from "./mention-input";
 import { supabase } from '@/integrations/supabase/client';
+import { UploadProgress as UploadProgressComponent } from "@/components/ui/upload-progress";
+import { PostCategoryBadge } from "@/components/ui/post-category-badge";
 
 interface CreatePostFormProps {
   isOpen: boolean;
@@ -41,15 +43,31 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
   const [uploading, setUploading] = useState(false);
   const [posting, setPosting] = useState(false);
   const [mentions, setMentions] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({ progress: 0, isUploading: false });
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
 
   const handleImageSelect = async (file: File) => {
+    const validationError = validateFile(file, 'image');
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setSelectedFileName(file.name);
     setUploading(true);
+    
     try {
-      const url = await uploadToStorage(file, "post_media", user?.id || '');
+      const url = await uploadToStorageWithProgress(
+        file, 
+        "post_media", 
+        user?.id || '',
+        setUploadProgress
+      );
+      
       if (url) {
         setMediaPreview(url);
         setMediaType('image');
-        toast.success("Image uploaded!");
+        toast.success("Image uploaded successfully! 🎉");
       }
     } catch (error) {
       toast.error("Failed to upload image");
@@ -58,13 +76,27 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
   };
 
   const handleVideoSelect = async (file: File) => {
+    const validationError = validateFile(file, 'video');
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    setSelectedFileName(file.name);
     setUploading(true);
+    
     try {
-      const url = await uploadToStorage(file, "post_media", user?.id || '');
+      const url = await uploadToStorageWithProgress(
+        file, 
+        "post_media", 
+        user?.id || '',
+        setUploadProgress
+      );
+      
       if (url) {
         setMediaPreview(url);
         setMediaType('video');
-        toast.success("Video uploaded!");
+        toast.success("Video uploaded successfully! 🎬");
       }
     } catch (error) {
       toast.error("Failed to upload video");
@@ -148,6 +180,8 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
     setMediaPreview(null);
     setMediaType(null);
     setMentions([]);
+    setUploadProgress({ progress: 0, isUploading: false });
+    setSelectedFileName('');
   };
 
   const handleContentChange = (newContent: string, newMentions: string[]) => {
@@ -177,20 +211,37 @@ export const CreatePostForm: React.FC<CreatePostFormProps> = ({ isOpen, onClose,
             onVideoSelect={handleVideoSelect} 
           />
           
-          <Select 
-            value={postType} 
-            onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts')}
-          >
-            <SelectTrigger className="w-[120px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="meme">Meme</SelectItem>
-              <SelectItem value="roast">Roast</SelectItem>
-              <SelectItem value="joke">Joke</SelectItem>
-              <SelectItem value="posts">Posts</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Select 
+              value={postType} 
+              onValueChange={(value) => setPostType(value as 'meme' | 'roast' | 'joke' | 'posts')}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="meme">🎭 Meme</SelectItem>
+                <SelectItem value="roast">🔥 Roast</SelectItem>
+                <SelectItem value="joke">😂 Joke</SelectItem>
+                <SelectItem value="posts">📝 Post</SelectItem>
+              </SelectContent>
+            </Select>
+            <PostCategoryBadge type={postType} variant="gradient" />
+          </div>
+          
+          {/* Upload Progress */}
+          {uploadProgress.isUploading && (
+            <UploadProgressComponent
+              progress={uploadProgress.progress}
+              isUploading={uploadProgress.isUploading}
+              error={uploadProgress.error}
+              fileName={selectedFileName}
+              onCancel={() => {
+                setUploading(false);
+                setUploadProgress({ progress: 0, isUploading: false });
+              }}
+            />
+          )}
           
           {mediaPreview && (
             <div className="relative rounded-md overflow-hidden border border-yellow-400">
