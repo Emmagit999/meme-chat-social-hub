@@ -97,9 +97,9 @@ export const useConnectionManager = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Start periodic pinging
+    // Start periodic pinging (reduced frequency for mobile optimization)
     pingConnection();
-    pingInterval.current = setInterval(pingConnection, 10000); // Every 10 seconds
+    pingInterval.current = setInterval(pingConnection, 15000); // Every 15 seconds for mobile efficiency
 
     return () => {
       window.removeEventListener('online', handleOnline);

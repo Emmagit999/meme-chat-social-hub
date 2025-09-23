@@ -118,7 +118,7 @@ export const useRealTimeSync = () => {
         event: '*', 
         schema: 'public', 
         table: 'notifications',
-        filter: `user_id.eq.${user.id}`
+        filter: `user_id=eq.${user.id}`
       }, (payload) => {
         console.log('Notifications change detected:', payload);
         queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -141,6 +141,7 @@ export const useRealTimeSync = () => {
         supabase.removeChannel(channel);
       });
       clearInterval(intervalId);
+      realTimeSyncInitialized = false;
     };
   }, [user, refreshAllData, getFriends, queryClient]);
 };

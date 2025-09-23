@@ -34,6 +34,9 @@ import { useRealTimeSync } from "@/hooks/use-real-time-sync";
 import { useOptimizedPresence } from "@/hooks/use-optimized-presence";
 import { useNetworkOptimizer } from "@/hooks/use-network-optimizer";
 import { useBackgroundSync } from "@/hooks/use-background-sync";
+import { useWakeOnInteraction } from "@/hooks/use-wake-on-interaction";
+import { useConnectionOptimizer } from "@/hooks/use-connection-optimizer";
+import { useAggressiveCaching } from "@/hooks/use-aggressive-caching";
 
 const AuthCheck = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -63,6 +66,9 @@ const AppRoutes = () => {
   useOptimizedPresence();
   useNetworkOptimizer();
   useBackgroundSync();
+  useWakeOnInteraction();
+  useConnectionOptimizer();
+  useAggressiveCaching();
   
   if (isLoading) {
     return <SplashScreen />;
