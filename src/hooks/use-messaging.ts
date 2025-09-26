@@ -39,17 +39,34 @@ export const useMessaging = () => {
 
     console.log("Setting up real-time listeners for user:", user.id);
 
-    // First ensure we're subscribed to messages via realtime
-    const messagesChannel = supabase
-      .channel('messages-channel')
-      .on('postgres_changes', 
+    // Listen for messages RECEIVED by the user
+    const messagesToUserChannel = supabase
+      .channel('messages-to-user')
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${user.id}` },
         (payload) => {
-          console.log('New message received:', payload);
-          // Refresh messages when the user receives a new message
+          console.log('Message change (to user) detected:', payload);
           if (getFriends) {
             getFriends().catch(err => {
-              console.error('Error refreshing friends after message:', err);
+              console.error('Error refreshing friends after inbound message change:', err);
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // ALSO listen for messages SENT by the user (needed for edits/deletes to reflect immediately)
+    const messagesFromUserChannel = supabase
+      .channel('messages-from-user')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'messages', filter: `sender_id=eq.${user.id}` },
+        (payload) => {
+          console.log('Message change (from user) detected:', payload);
+          if (getFriends) {
+            getFriends().catch(err => {
+              console.error('Error refreshing friends after outbound message change:', err);
             });
           }
         }
@@ -59,11 +76,11 @@ export const useMessaging = () => {
     // Also listen for chat updates
     const chatsChannel = supabase
       .channel('chats-channel')
-      .on('postgres_changes',
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'chats' },
         (payload) => {
           console.log('Chat updated:', payload);
-          // Ensure both participants in the chat are refreshed
           if (getFriends) {
             getFriends().catch(err => {
               console.error('Error refreshing friends after chat update:', err);
@@ -74,7 +91,8 @@ export const useMessaging = () => {
       .subscribe();
       
     return () => {
-      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(messagesToUserChannel);
+      supabase.removeChannel(messagesFromUserChannel);
       supabase.removeChannel(chatsChannel);
     };
   }, [user, getFriends]);
@@ -253,18 +271,20 @@ export const useMessaging = () => {
 
   // Better connection status monitoring
   useEffect(() => {
+    const goOnline = () => setIsConnected(true);
+    const goOffline = () => setIsConnected(false);
     const checkConnection = () => {
       setIsConnected(navigator.onLine);
     };
 
-    window.addEventListener('online', () => setIsConnected(true));
-    window.addEventListener('offline', () => setIsConnected(false));
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
     
     checkConnection();
     
     return () => {
-      window.removeEventListener('online', () => setIsConnected(true));
-      window.removeEventListener('offline', () => setIsConnected(false));
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
     };
   }, []);
 
@@ -288,6 +308,28 @@ export const useMessaging = () => {
       setIsConnected(navigator.onLine);
     }
   }, [getFriends]);
+
+  // Wake/resubscribe when returning to the tab
+  useEffect(() => {
+    const handleFocus = () => {
+      console.log('Window focus: attempting reconnect');
+      reconnect();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Visibility change to visible: attempting reconnect');
+        reconnect();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [reconnect]);
 
   // Set loading state to false once we have data
   useEffect(() => {
