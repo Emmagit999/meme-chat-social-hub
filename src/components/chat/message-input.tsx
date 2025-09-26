@@ -93,13 +93,8 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   return (
     <div className="p-4 border-t border-border sticky bottom-0 z-10 
                    bg-gradient-to-r from-muted/50 to-muted/30 backdrop-blur-sm">
-      {!isConnected && (
-        <div className="flex items-center justify-center mb-2 bg-red-900/20 text-red-500 p-2 rounded-md">
-          <AlertCircle className="h-4 w-4 mr-2" />
-          <span className="text-sm">Connection lost. Reconnecting...</span>
-        </div>
-      )}
-      
+      {/* Connection status is shown in NetworkStatus; no inline banner here */}
+
       <form onSubmit={handleSendMessage} className="flex gap-2">
         <Popover>
           <PopoverTrigger asChild>

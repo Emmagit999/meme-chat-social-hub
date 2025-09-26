@@ -5,7 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMessaging } from "@/hooks/use-messaging";
 import { useAuth } from "@/context/auth-context";
-import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle, ChevronDown } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, RefreshCw, WifiOff, AlertTriangle, ChevronDown, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -331,76 +331,19 @@ const ChatPage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                             {chat.lastMessage && !chat.lastMessage.includes('[deleted]') && (
-                               <p className="text-sm text-muted-foreground truncate group-hover:text-foreground/80 transition-colors">
-                                 {chat.lastMessage}
-                               </p>
-                             )}
-                          </div>
-                          {chat.unreadCount > 0 && (
-                            <div className="bg-gradient-to-r from-accent to-primary text-white text-xs 
-                                         rounded-full h-6 w-6 flex items-center justify-center font-bold
-                                         animate-pulse shadow-lg">
-                              {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
-                            </div>
-                          )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-            
-            <div className="p-4 border-t border-border">
-              <Button 
-                className="w-full bg-gradient-to-r from-primary to-accent text-white flex items-center gap-2
-                         hover:scale-105 transition-all duration-300 rounded-xl py-3 font-semibold
-                         shadow-lg hover:shadow-xl border-0"
-                onClick={() => navigate('/pals')}
-              >
-                <Users className="h-5 w-5" />
-                My Pals
-              </Button>
-            </div>
-          </div>
-          
-          {/* Chat Messages Area */}
-          <div className={`${!activeChat && isMobile ? 'hidden' : 'flex'} flex-1 flex-col`}>
-          {activeChat ? (
-            <>
-              <ChatHeader 
-                username={getOtherUser(activeChat).name}
-                avatarSrc={getOtherUser(activeChat).avatar}
-                userId={getOtherUser(activeChat).id}
-                onBackClick={handleBackToList}
-                showBackButton={true}
-                isConnected={isConnected}
-              />
-              
-              <ScrollArea className="flex-1 p-4">{/* scrollable message area */}
-                {!isConnected && (
-                  <div className="mb-4 p-3 bg-red-900/20 text-red-500 rounded-md flex items-center">
-                    <WifiOff className="h-4 w-4 mr-2" />
-                    <span className="flex-1">Connection lost. Messages may not be delivered.</span>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="ml-2 border-red-500 text-red-500 hover:bg-red-500/20"
-                      onClick={() => reconnect()}
-                    >
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Reconnect
-                    </Button>
-                  </div>
-                )}
-                
-                {lastError && (
-                  <div className="mb-4 p-3 bg-amber-900/20 text-amber-500 rounded-md flex items-center">
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    <span className="flex-1">There was an error sending your last message. Please try again.</span>
-                  </div>
-                )}
-                
+                              {chat.lastMessage ? (
+                                chat.lastMessage.includes('[deleted]') ? (
+                                  <div className="flex items-center gap-1 text-sm text-muted-foreground italic">
+                                    <Trash2 className="h-3 w-3" />
+                                    <span>Message deleted</span>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground truncate group-hover:text-foreground/80 transition-colors">
+                                    {chat.lastMessage}
+                                  </p>
+                                )
+                              ) : null}
+
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400">
                     No messages yet. Say hello!
