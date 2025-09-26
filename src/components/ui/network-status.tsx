@@ -13,26 +13,29 @@ export const NetworkStatus: React.FC = () => {
 
   const getStatusColor = () => {
     if (!connectionState.isOnline) return 'text-red-500';
+    if (connectionState.isOnline && !connectionState.isConnected) return 'text-yellow-500';
     switch (connectionState.connectionQuality) {
       case 'excellent': return 'text-green-500';
       case 'good': return 'text-blue-500';
       case 'poor': return 'text-yellow-500';
-      default: return 'text-red-500';
+      default: return 'text-yellow-500';
     }
   };
 
   const getStatusIcon = () => {
     if (!connectionState.isOnline) return <WifiOff className="h-4 w-4" />;
+    if (connectionState.isOnline && !connectionState.isConnected) return <AlertTriangle className="h-4 w-4" />;
     switch (connectionState.connectionQuality) {
       case 'excellent': return <Zap className="h-4 w-4" />;
       case 'good': return <Wifi className="h-4 w-4" />;
       case 'poor': return <AlertTriangle className="h-4 w-4" />;
-      default: return <WifiOff className="h-4 w-4" />;
+      default: return <AlertTriangle className="h-4 w-4" />;
     }
   };
 
   const getStatusText = () => {
     if (!connectionState.isOnline) return 'Offline';
+    if (connectionState.isOnline && !connectionState.isConnected) return 'Reconnecting…';
     return connectionState.connectionQuality.charAt(0).toUpperCase() + 
            connectionState.connectionQuality.slice(1);
   };

@@ -52,7 +52,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
     e.preventDefault();
     
     // Prevent duplicate submissions
-    if (isSubmitting || isSending || !messageText.trim() || !isConnected) return;
+    if (isSubmitting || isSending || !messageText.trim()) return;
     
     try {
       setIsSubmitting(true);
@@ -140,7 +140,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
               isOverLimit ? 'border-destructive ring-2 ring-destructive/30' : ''
             }`}
             autoFocus
-            disabled={!isConnected || isSending || isSubmitting}
+            disabled={isSending || isSubmitting}
           />
           <div className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-xs ${
             isNearLimit ? 'text-yellow-500' : 'text-gray-500'
@@ -156,7 +156,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           className="bg-gradient-to-r from-primary to-accent text-white rounded-full h-12 w-12 p-0 
                    flex items-center justify-center hover:scale-110 transition-all duration-300
                    disabled:opacity-50 disabled:hover:scale-100 shadow-lg glow-pulse border-0"
-          disabled={!messageText.trim() || !isConnected || isSending || isSubmitting}
+          disabled={!messageText.trim() || isSending || isSubmitting}
         >
           {isSending || isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />

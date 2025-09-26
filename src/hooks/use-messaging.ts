@@ -144,9 +144,7 @@ export const useMessaging = () => {
       updateMessageStatus(optimisticId, 'failed');
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
       toast.error("Failed to send message");
-      
-      // Remove failed optimistic message after a delay
-      setTimeout(() => removeOptimisticMessage(optimisticId), 3000);
+      // Keep failed message visible for retry
       throw error;
     } finally {
       setIsSending(false);
@@ -176,6 +174,21 @@ export const useMessaging = () => {
       }
       
       console.log("Message successfully deleted");
+
+      // Update chat preview immediately to reflect deletion
+      if (activeChat) {
+        try {
+          await supabase
+            .from('chats')
+            .update({
+              last_message: '[deleted]',
+              last_message_date: new Date().toISOString()
+            })
+            .eq('id', activeChat);
+        } catch (e) {
+          console.warn('Failed to update chat last_message after deletion:', e);
+        }
+      }
       
       // Immediate refresh for both sender and receiver
       if (getFriends) {

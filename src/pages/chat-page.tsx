@@ -234,6 +234,18 @@ const ChatPage: React.FC = () => {
     return otherUser.avatar;
   };
 
+  // Only show optimistic messages that belong to the active chat
+  const filteredOptimisticMessages = activeChat && user ? (
+    optimisticMessages.filter((m) => {
+      const otherId = getOtherUser(activeChat).id;
+      return (
+        (m.sender_id === user.id && m.receiver_id === otherId) ||
+        (m.receiver_id === user.id && m.sender_id === otherId)
+      );
+    })
+  ) : [];
+
+
   // Filter chats based on search query
   const filteredChats = chats.filter(chat => {
     if (!searchQuery.trim()) return true;
@@ -408,25 +420,25 @@ const ChatPage: React.FC = () => {
                        />
                      ))}
                      
-                     {/* Optimistic messages for immediate feedback */}
-                     {optimisticMessages.map(optMessage => (
-                       <ChatMessage
-                         key={`optimistic-${optMessage.id}`}
-                         message={{
-                           id: optMessage.id,
-                           content: optMessage.content,
-                           senderId: optMessage.sender_id,
-                           receiverId: optMessage.receiver_id,
-                           createdAt: new Date(optMessage.created_at),
-                           edited: false,
-                           read: false
-                         }}
-                         currentUser={currentUser}
-                         otherUserAvatar={getOtherUserAvatar(activeChat)}
-                         isOptimistic={true}
-                         status={optMessage.status}
-                       />
-                     ))}
+      {/* Optimistic messages for immediate feedback */}
+      {filteredOptimisticMessages.map(optMessage => (
+        <ChatMessage
+          key={`optimistic-${optMessage.id}`}
+          message={{
+            id: optMessage.id,
+            content: optMessage.content,
+            senderId: optMessage.sender_id,
+            receiverId: optMessage.receiver_id,
+            createdAt: new Date(optMessage.created_at),
+            edited: false,
+            read: false
+          }}
+          currentUser={currentUser}
+          otherUserAvatar={getOtherUserAvatar(activeChat)}
+          isOptimistic={true}
+          status={optMessage.status}
+        />
+      ))}
                      <div ref={messageEndRef} />
                    </div>
                  )}

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Home, Search, Users, Bell, MessageCircle, User } from "lucide-react";
+import { Home, Search, Users, Bell, MessageCircle, User, Info, Heart } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { UserMenu } from "@/components/layout/user-menu";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -82,6 +82,24 @@ export const Navbar = () => {
     });
   }
 
+  // Ensure About and Support are accessible on mobile
+  if (isMobile) {
+    navigationItems.push(
+      {
+        path: '/about',
+        label: 'About',
+        icon: <Info className="h-5 w-5" />,
+        activeIcon: <Info className="h-5 w-5 text-yellow-500" />,
+      },
+      {
+        path: '/support',
+        label: 'Support',
+        icon: <Heart className="h-5 w-5" />,
+        activeIcon: <Heart className="h-5 w-5 text-yellow-500" />,
+      }
+    );
+  }
+  
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:bottom-auto bg-gray-900 border-t md:border-t-0 md:border-b border-gray-800 z-10">
       <div className="container flex items-center justify-between py-2 md:py-3">
