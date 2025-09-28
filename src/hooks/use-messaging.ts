@@ -289,34 +289,38 @@ export const useMessaging = () => {
   }, []);
 
   const reconnect = useCallback(async () => {
-    try {
+    // Only attempt if we're online and currently not connected
+    if (!navigator.onLine) {
       setIsConnected(false);
+      return;
+    }
+    try {
       console.log('Attempting to reconnect...');
-      
-      // Re-establish connection with Supabase
-      await supabase.auth.refreshSession();
-      
-      // Verify connection by fetching data
+      // Light-touch check; avoids tearing down channels unnecessarily
+      await supabase.auth.getSession();
+      // Verify connection by fetching lightweight data
       if (getFriends) {
         await getFriends();
       }
-      
       setIsConnected(true);
       console.log('Reconnection successful');
     } catch (error) {
       console.error('Error during reconnection:', error);
-      setIsConnected(navigator.onLine);
+      // Do not flip to false if we are online; keep previous state to avoid UI flicker
+      if (!navigator.onLine) setIsConnected(false);
     }
   }, [getFriends]);
 
   // Wake/resubscribe when returning to the tab
   useEffect(() => {
     const handleFocus = () => {
-      console.log('Window focus: attempting reconnect');
-      reconnect();
+      if (!isConnected && navigator.onLine) {
+        console.log('Window focus: attempting reconnect');
+        reconnect();
+      }
     };
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && !isConnected && navigator.onLine) {
         console.log('Visibility change to visible: attempting reconnect');
         reconnect();
       }
@@ -329,7 +333,7 @@ export const useMessaging = () => {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  }, [reconnect]);
+  }, [reconnect, isConnected]);
 
   // Set loading state to false once we have data
   useEffect(() => {

@@ -73,14 +73,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           >
             {username}
           </h3>
-          {!isConnected ? (
-            <p className="text-sm text-red-300 flex items-center animate-pulse">
-              <WifiOff className="h-4 w-4 mr-1" />
-              Reconnecting...
-            </p>
-          ) : (
-            <p className="text-sm text-white/70">Active now</p>
-          )}
+          <p className="text-sm text-white/70">Active now</p>
         </div>
       </div>
       
