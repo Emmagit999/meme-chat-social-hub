@@ -627,6 +627,36 @@ export const useChat = () => {
     }
   };
 
+  const refreshChats = useCallback(async () => {
+    await fetchChatsFromSupabase(users);
+  }, [users]);
+
+  const refreshMessages = useCallback(async () => {
+    await fetchMessagesFromSupabase(chats);
+  }, [chats]);
+
+  const refreshChatsAndMessages = useCallback(async () => {
+    await fetchChatsFromSupabase(users);
+    await fetchMessagesFromSupabase(chats);
+  }, [users, chats]);
+
+  const updateMessageLocal = useCallback((messageId: string, changes: Partial<Message>) => {
+    setMessages(prev => prev.map(m => m.id === messageId ? { ...m, ...changes } : m));
+    const target = messages.find(m => m.id === messageId);
+    if (target && typeof changes.content === 'string') {
+      setChats(prev => prev.map(c => {
+        const involves = c.participants.includes(target.senderId) && c.participants.includes(target.receiverId);
+        if (!involves) return c;
+        const isLatest = !c.lastMessageDate || target.createdAt >= (c.lastMessageDate as Date);
+        return isLatest ? { ...c, lastMessage: changes.content as string, lastMessageDate: new Date() } : c;
+      }));
+    }
+  }, [messages]);
+
+  const updateChatLastMessageLocal = useCallback((chatId: string, content: string) => {
+    setChats(prev => prev.map(c => c.id === chatId ? { ...c, lastMessage: content, lastMessageDate: new Date() } : c));
+  }, []);
+
   return {
     chats,
     messages: filteredMessages,
@@ -639,6 +669,11 @@ export const useChat = () => {
     getSuggestedUsers,
     getUserById,
     registerUser,
-    getFriends
+    getFriends,
+    refreshChats,
+    refreshMessages,
+    refreshChatsAndMessages,
+    updateMessageLocal,
+    updateChatLastMessageLocal
   };
 };

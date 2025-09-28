@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 
 export const useMessaging = () => {
-  const { chats, messages, activeChat, setActiveChat, sendMessage: chatSendMessage, startNewChat, getSuggestedUsers, getUserById, registerUser, getFriends } = useChat();
+  const { chats, messages, activeChat, setActiveChat, sendMessage: chatSendMessage, startNewChat, getSuggestedUsers, getUserById, registerUser, getFriends, refreshChatsAndMessages, updateMessageLocal, updateChatLastMessageLocal } = useChat();
   const [isSending, setIsSending] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -159,10 +159,13 @@ export const useMessaging = () => {
         delete next[activeChat];
         return next;
       });
+      // Instantly reflect in chat list
+      updateChatLastMessageLocal(activeChat, content);
       // Optionally remove optimistic message after real data arrives
       setTimeout(() => removeOptimisticMessage(optimisticId), 1500);
       
-      // Refresh messages to get real data
+      // Background refresh to sync without UI flicker
+      refreshChatsAndMessages?.();
       if (getFriends) {
         setTimeout(() => getFriends(), 500);
       }
@@ -227,6 +230,9 @@ export const useMessaging = () => {
         } catch (e) {
           console.warn('Failed to update chat last_message after deletion:', e);
         }
+        // Update local state instantly
+        updateMessageLocal(messageId, { content: '[deleted]' });
+        updateChatLastMessageLocal(activeChat, '[deleted]');
       }
       
       // Clear sidebar override to show updated preview
@@ -237,7 +243,8 @@ export const useMessaging = () => {
           return next;
         });
       }
-      // Immediate refresh for both sender and receiver
+      // Background refresh for both sender and receiver without UI flicker
+      refreshChatsAndMessages?.();
       if (getFriends) {
         await getFriends();
       }
@@ -291,7 +298,14 @@ export const useMessaging = () => {
       
       console.log("Message successfully edited");
       
-      // Update UI - trigger a refresh via getFriends to reload chats and messages
+      // Update local state instantly
+      updateMessageLocal(messageId, { content: newContent, edited: true, editedAt: new Date().toISOString() });
+      if (activeChat) {
+        updateChatLastMessageLocal(activeChat, newContent);
+      }
+      
+      // Background refresh to sync fully
+      refreshChatsAndMessages?.();
       if (getFriends) {
         await getFriends();
       }
@@ -378,6 +392,21 @@ export const useMessaging = () => {
       setIsLoading(false);
     }
   }, [chats]);
+
+  // In-app background sync: periodically refresh chats/messages without UI flicker
+  useEffect(() => {
+    if (!user) return;
+    const id = setInterval(() => {
+      if (navigator.onLine) {
+        try {
+          refreshChatsAndMessages?.();
+        } catch (e) {
+          console.warn('Background sync failed', e);
+        }
+      }
+    }, 7000);
+    return () => clearInterval(id);
+  }, [user, refreshChatsAndMessages]);
 
   return {
     chats,
