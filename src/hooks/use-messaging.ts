@@ -16,6 +16,8 @@ export const useMessaging = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [lastError, setLastError] = useState<Error | null>(null);
   const [deletingMessages, setDeletingMessages] = useState<Set<string>>(new Set());
+  // Sidebar chat preview overrides for optimistic UI ("Sending...", "Deleting...")
+  const [chatPreviewOverrides, setChatPreviewOverrides] = useState<Record<string, { text: string; kind: 'sending' | 'deleting' | 'info' }>>({});
   const { user } = useAuth();
   const { 
     optimisticMessages, 
@@ -113,6 +115,9 @@ export const useMessaging = () => {
       return null;
     }
 
+    // Update sidebar preview optimistically
+    setChatPreviewOverrides(prev => ({ ...prev, [activeChat]: { text: 'Sending...', kind: 'sending' } }));
+
     // Add optimistic message immediately (like WhatsApp)
     const optimisticId = addOptimisticMessage(content, user.id, receiverId);
     
@@ -147,9 +152,15 @@ export const useMessaging = () => {
         })
         .eq('id', activeChat);
 
-      // Remove optimistic message and mark as sent
+      // Mark optimistic message as sent and clear sidebar override
       updateMessageStatus(optimisticId, 'sent');
-      setTimeout(() => removeOptimisticMessage(optimisticId), 1000);
+      setChatPreviewOverrides(prev => {
+        const next = { ...prev };
+        delete next[activeChat];
+        return next;
+      });
+      // Optionally remove optimistic message after real data arrives
+      setTimeout(() => removeOptimisticMessage(optimisticId), 1500);
       
       // Refresh messages to get real data
       if (getFriends) {
@@ -162,6 +173,12 @@ export const useMessaging = () => {
       updateMessageStatus(optimisticId, 'failed');
       setLastError(error instanceof Error ? error : new Error("Failed to send message"));
       toast.error("Failed to send message");
+      // Clear sidebar override on failure
+      setChatPreviewOverrides(prev => {
+        const next = { ...prev };
+        delete next[activeChat];
+        return next;
+      });
       // Keep failed message visible for retry
       throw error;
     } finally {
@@ -176,6 +193,10 @@ export const useMessaging = () => {
     try {
       // Immediately mark as deleting for instant UI feedback
       setDeletingMessages(prev => new Set(prev).add(messageId));
+      // Optimistically update sidebar preview
+      if (activeChat) {
+        setChatPreviewOverrides(prev => ({ ...prev, [activeChat]: { text: 'Deleting message...', kind: 'deleting' } }));
+      }
       
       console.log("Attempting to delete message with ID:", messageId);
       
@@ -208,6 +229,14 @@ export const useMessaging = () => {
         }
       }
       
+      // Clear sidebar override to show updated preview
+      if (activeChat) {
+        setChatPreviewOverrides(prev => {
+          const next = { ...prev };
+          delete next[activeChat];
+          return next;
+        });
+      }
       // Immediate refresh for both sender and receiver
       if (getFriends) {
         await getFriends();
@@ -218,6 +247,14 @@ export const useMessaging = () => {
       console.error('Error deleting message:', error);
       toast.error("Failed to delete message");
       setLastError(error instanceof Error ? error : new Error("Failed to delete message"));
+      // Clear sidebar override on failure
+      if (activeChat) {
+        setChatPreviewOverrides(prev => {
+          const next = { ...prev };
+          delete next[activeChat];
+          return next;
+        });
+      }
       return false;
     } finally {
       // Remove from deleting set
@@ -362,6 +399,7 @@ export const useMessaging = () => {
     isLoading,
     lastError,
     optimisticMessages,
+    chatPreviewOverrides,
     deletingMessages
   };
 };

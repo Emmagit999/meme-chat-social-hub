@@ -75,7 +75,8 @@ const ChatPage: React.FC = () => {
     getFriends,
     lastError,
     optimisticMessages,
-    deletingMessages
+    deletingMessages,
+    chatPreviewOverrides
   } = useMessaging();
   const messageEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -331,7 +332,14 @@ const ChatPage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          {chat.lastMessage ? (
+                          {chatPreviewOverrides?.[chat.id] ? (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground italic">
+                              <RefreshCw className="h-3 w-3 animate-spin" />
+                              <span>
+                                {chatPreviewOverrides[chat.id].kind === 'deleting' ? 'Deleting message...' : 'Sending...'}
+                              </span>
+                            </div>
+                          ) : chat.lastMessage ? (
                             chat.lastMessage.includes('[deleted]') ? (
                               <div className="flex items-center gap-1 text-sm text-muted-foreground italic">
                                 <Trash2 className="h-3 w-3" />
