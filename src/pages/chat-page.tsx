@@ -301,91 +301,113 @@ const ChatPage: React.FC = () => {
                   {filteredChats.map(chat => {
                     const otherUser = getOtherUser(chat.id);
                     return (
-                        <button
-                          key={chat.id}
-                          className={`w-full p-4 flex items-center gap-3 hover:bg-primary/10 
-                                    transition-all duration-300 border-b border-border/50 relative
-                                    ${activeChat === chat.id ? 'bg-primary/20 border-l-4 border-l-primary' : ''}
-                                    hover:scale-[1.02] hover:shadow-md group`}
-                          onClick={() => handleChatSelect(chat.id)}
-                        >
-                          <div className="relative">
-                            <Avatar className="h-12 w-12 ring-2 ring-primary/30 group-hover:ring-primary/60 transition-all">
-                              <AvatarImage src={otherUser.avatar} />
-                              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold">
-                                {otherUser.name.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {/* Online indicator */}
-                            <div className="absolute -bottom-1 -right-1 w-4 h-4 chat-online-indicator 
-                                         rounded-full border-2 border-card"></div>
+                      <button
+                        key={chat.id}
+                        className={`w-full p-4 flex items-center gap-3 hover:bg-primary/10 
+                                  transition-all duration-300 border-b border-border/50 relative
+                                  ${activeChat === chat.id ? 'bg-primary/20 border-l-4 border-l-primary' : ''}
+                                  hover:scale-[1.02] hover:shadow-md group`}
+                        onClick={() => handleChatSelect(chat.id)}
+                      >
+                        <div className="relative">
+                          <Avatar className="h-12 w-12 ring-2 ring-primary/30 group-hover:ring-primary/60 transition-all">
+                            <AvatarImage src={otherUser.avatar} />
+                            <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-bold">
+                              {otherUser.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          {/* Online indicator */}
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 chat-online-indicator 
+                                       rounded-full border-2 border-card"></div>
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
+                              {otherUser.name}
+                            </p>
+                            {chat.lastMessageDate && (
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(chat.lastMessageDate), 'h:mm a')}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex-1 text-left min-w-0">
-                            <div className="flex justify-between items-center mb-1">
-                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                                {otherUser.name}
+                          {chat.lastMessage ? (
+                            chat.lastMessage.includes('[deleted]') ? (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground italic">
+                                <Trash2 className="h-3 w-3" />
+                                <span>Message deleted</span>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground truncate group-hover:text-foreground/80 transition-colors">
+                                {chat.lastMessage}
                               </p>
-                              {chat.lastMessageDate && (
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(chat.lastMessageDate), 'h:mm a')}
-                                </span>
-                              )}
-                            </div>
-                              {chat.lastMessage ? (
-                                chat.lastMessage.includes('[deleted]') ? (
-                                  <div className="flex items-center gap-1 text-sm text-muted-foreground italic">
-                                    <Trash2 className="h-3 w-3" />
-                                    <span>Message deleted</span>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground truncate group-hover:text-foreground/80 transition-colors">
-                                    {chat.lastMessage}
-                                  </p>
-                                )
-                              ) : null}
+                            )
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
 
+          {/* Chat Messages Area */}
+          {activeChat ? (
+            <div className="flex-1 flex flex-col bg-background relative">
+              <ChatHeader
+                username={getOtherUser(activeChat).name}
+                avatarSrc={getOtherUser(activeChat).avatar}
+                userId={getOtherUser(activeChat).id}
+                onBackClick={handleBackToList}
+                showBackButton={true}
+                isConnected={isConnected}
+              />
+              
+              <ScrollArea ref={messagesContainerRef} className="flex-1 overflow-y-auto">
                 {messages.length === 0 ? (
                   <div className="h-full flex items-center justify-center text-gray-400">
                     No messages yet. Say hello!
                   </div>
-                 ) : (
-                   <div className="space-y-4">
-                     {/* Real messages from database */}
-                     {messages.map(message => (
-                       <ChatMessage
-                         key={message.id}
-                         message={message}
-                         currentUser={currentUser}
-                         otherUserAvatar={getOtherUserAvatar(activeChat)}
-                         onDeleteMessage={handleDeleteMessage}
-                         onEditMessage={handleEditMessage}
-                         isDeleting={deletingMessages.has(message.id)}
-                       />
-                     ))}
-                     
-      {/* Optimistic messages for immediate feedback */}
-      {filteredOptimisticMessages.map(optMessage => (
-        <ChatMessage
-          key={`optimistic-${optMessage.id}`}
-          message={{
-            id: optMessage.id,
-            content: optMessage.content,
-            senderId: optMessage.sender_id,
-            receiverId: optMessage.receiver_id,
-            createdAt: new Date(optMessage.created_at),
-            edited: false,
-            read: false
-          }}
-          currentUser={currentUser}
-          otherUserAvatar={getOtherUserAvatar(activeChat)}
-          isOptimistic={true}
-          status={optMessage.status}
-        />
-      ))}
-                     <div ref={messageEndRef} />
-                   </div>
-                 )}
+                ) : (
+                  <div className="space-y-4 p-4">
+                    {/* Real messages from database */}
+                    {messages.map(message => (
+                      <ChatMessage
+                        key={message.id}
+                        message={message}
+                        currentUser={currentUser}
+                        otherUserAvatar={getOtherUserAvatar(activeChat)}
+                        onDeleteMessage={handleDeleteMessage}
+                        onEditMessage={handleEditMessage}
+                        isDeleting={deletingMessages.has(message.id)}
+                      />
+                    ))}
+                    
+                    {/* Optimistic messages for immediate feedback */}
+                    {filteredOptimisticMessages.map(optMessage => (
+                      <ChatMessage
+                        key={`optimistic-${optMessage.id}`}
+                        message={{
+                          id: optMessage.id,
+                          content: optMessage.content,
+                          senderId: optMessage.sender_id,
+                          receiverId: optMessage.receiver_id,
+                          createdAt: new Date(optMessage.created_at),
+                          edited: false,
+                          read: false
+                        }}
+                        currentUser={currentUser}
+                        otherUserAvatar={getOtherUserAvatar(activeChat)}
+                        isOptimistic={true}
+                        status={optMessage.status}
+                      />
+                    ))}
+                    <div ref={messageEndRef} />
+                  </div>
+                )}
               </ScrollArea>
+              
               <div className="border-t border-border">
                 <MessageInput 
                   onSendMessage={sendMessage}
@@ -393,7 +415,7 @@ const ChatPage: React.FC = () => {
                   isConnected={isConnected}
                 />
               </div>
-            </>
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
@@ -402,7 +424,6 @@ const ChatPage: React.FC = () => {
               </div>
             </div>
           )}
-          </div>
         </div>
       </div>
       
